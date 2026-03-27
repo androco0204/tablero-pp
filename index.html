@@ -228,12 +228,22 @@
 
 <script>
 // ── CONFIGURACIÓN ──────────────────────────────────────
-const CLIENT_ID = '83010513128-6lsh3o6kdltofq70o82p7rpqo0tqhmqr.apps.googleusercontent.com'; 
+const CLIENT_ID = '83010513128-6lsh3o6kdltofq70o82p7rpqo0tqhmqr.apps.googleusercontent.com';
 const ROOT_FOLDER_ID = '1Ei6dEaZyDmoir5MgugwW3GC7V1P9TSgo';
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 const COL = {ID:4,COD_MED:10,DESC_MED:11,F_NOTIF:14,MUN:18,DEP:19,REG:20,GF:26,F_GESTION:28,F_ENTREGA:29,GESTION:30};
 const HABIL=[1,2,3,4,5];
 let allData=[], filteredData=[];
+
+// Mapa de normalización de nombres de gestores (sin importar mayúsculas/minúsculas)
+const GESTOR_MAP = {
+  'cohan':'Cohan', 'discolmeth':'Discolmeth', 'disfarma':'Disfarma',
+  'genhospi':'Genhospi', 'insumedic':'Insumedic', 'myt':'MYT', 'pharmasan':'Pharmasan'
+};
+function normalizarGestor(nombre) {
+  const clave = nombre.trim().toLowerCase();
+  return GESTOR_MAP[clave] || nombre.trim();
+}
 
 // ── HELPERS ────────────────────────────────────────────
 function diasHabiles(d1,d2){if(!d1||!d2)return null;let s=new Date(d1),e=new Date(d2);if(isNaN(s)||isNaN(e)||e<s)return 0;let c=0,cur=new Date(s);while(cur<=e){if(HABIL.includes(cur.getDay()))c++;cur.setDate(cur.getDate()+1);}return Math.max(0,c-1);}
@@ -309,14 +319,15 @@ async function loadFromDrive(){
     let queue=[];
     for(let gi=0;gi<gestorFolders.length;gi++){
       const gf=gestorFolders[gi];
-      setProgress(5+(gi/gestorFolders.length*25),`Explorando: ${gf.name}`);
-      log(`→ ${gf.name}`,'info');
+      setProgress(5+(gi/gestorFolders.length*25),`Explorando: ${normalizarGestor(gf.name)}`);
+      log(`→ ${normalizarGestor(gf.name)}`,'info');
+      const gfNombre = normalizarGestor(gf.name);
       const mesFolders=await driveList(`'${gf.id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
       if(!mesFolders.length){log(`  ⚠ Sin carpetas de mes`,'warn');continue;}
       for(const mes of mesFolders){
         const files=await driveList(`'${mes.id}' in parents and trashed=false and (mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.ms-excel')`);
         if(!files.length){log(`  ⚠ ${mes.name}: vacío`,'warn');continue;}
-        for(const f of files)queue.push({fileId:f.id,fileName:f.name,gf:gf.name,mes:getMesLabel(mes.name)});
+        for(const f of files)queue.push({fileId:f.id,fileName:f.name,gf:gfNombre,mes:getMesLabel(mes.name)});
         log(`  ✓ ${mes.name}: ${files.length} archivo(s)`,'ok');
       }
     }
