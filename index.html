@@ -237,12 +237,23 @@ let allData=[], filteredData=[];
 
 // Mapa de normalización de nombres de gestores (sin importar mayúsculas/minúsculas)
 const GESTOR_MAP = {
-  'cohan':'Cohan', 'discolmeth':'Discolmeth', 'disfarma':'Disfarma',
-  'genhospi':'Genhospi', 'insumedic':'Insumedic', 'myt':'MYT', 'pharmasan':'Pharmasan'
+  'cohan':'Cohan',
+  'discolmets':'Discolmets',
+  'discolmeth':'Discolmets',
+  'disfarma':'Disfarma',
+  'genhospi':'Genhospi',
+  'insumedic':'Insumedic',
+  'myt salud':'MyT Salud',
+  'myt':'MyT Salud',
+  'pharmasan':'Pharmasan'
 };
 function normalizarGestor(nombre) {
   const clave = nombre.trim().toLowerCase();
-  return GESTOR_MAP[clave] || nombre.trim();
+  if (GESTOR_MAP[clave]) return GESTOR_MAP[clave];
+  for (const [key, val] of Object.entries(GESTOR_MAP)) {
+    if (clave.includes(key) || key.includes(clave)) return val;
+  }
+  return nombre.trim();
 }
 
 // ── HELPERS ────────────────────────────────────────────
