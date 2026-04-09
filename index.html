@@ -324,8 +324,9 @@ tbody td{padding:8px 12px;white-space:nowrap;}
 // ══════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ══════════════════════════════════════════════════════
-const CLIENT_ID = '83010513128-6lsh3o6kdltofq70o82p7rpqo0tqhmqr.apps.googleusercontent.com';
+const CLIENT_ID = 'TU_CLIENT_ID.apps.googleusercontent.com';
 const ROOT_FOLDER_ID = '1Ei6dEaZyDmoir5MgugwW3GC7V1P9TSgo';
+const PP_FOLDER_ID = '1-UEH5E8NAoRQ7VuHWklHkRTCwcHLY8tT'; // Carpeta archivos PP mensuales
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 
 // Mapa de nombres de columna a buscar en el encabezado del Excel
@@ -354,7 +355,7 @@ const GESTOR_MAP = {
 };
 function normalizarGestor(n){const c=n.trim().toLowerCase();if(GESTOR_MAP[c])return GESTOR_MAP[c];for(const[k,v]of Object.entries(GESTOR_MAP)){if(c.includes(k)||k.includes(c))return v;}return n.trim();}
 
-let allData=[], filteredData=[];
+let allData=[], filteredData=[], ppData={}; // ppData: {mes: {gestor: totalPP}}
 
 // ══════════════════════════════════════════════════════
 // HELPERS FECHA
@@ -503,6 +504,46 @@ async function driveDownload(id){
   if(!r.ok)throw new Error(`Download ${r.status}`);
   return r.arrayBuffer();
 }
+// ── CARGA ARCHIVOS POBLACIÓN PRIORIZADA ──────────────────
+async function loadPPFiles(){
+  try{
+    log('Buscando archivos de Población Priorizada...','info');
+    const files=await driveList(`'${PP_FOLDER_ID}' in parents and trashed=false and (mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.ms-excel')`);
+    if(!files.length){log('⚠ No se encontraron archivos PP','warn');return;}
+    for(const file of files){
+      const mesLabel=getMesLabel(file.name);
+      if(!mesLabel||mesLabel===file.name)continue; // Solo archivos con mes reconocible
+      try{
+        const buf=await driveDownload(file.id);
+        const wb=XLSX.read(buf,{type:'array',cellDates:true});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        if(rows.length<2)continue;
+        // Buscar columna PBS (gestor) en encabezados
+        const headers=rows[0].map(h=>String(h||'').toLowerCase().trim());
+        const pbsCol=headers.findIndex(h=>h==='pbs'||h.includes('pbs')||h==='uap actual'||h.includes('uap actual')||h==='gestor');
+        if(pbsCol===-1){log(`⚠ ${file.name}: columna PBS no encontrada`,'warn');continue;}
+        if(!ppData[mesLabel])ppData[mesLabel]={};
+        // Contar usuarios únicos por gestor
+        const gestorCount={};
+        for(let i=1;i<rows.length;i++){
+          const row=rows[i];
+          if(!row||row.every(c=>c===''||c===null||c===undefined))continue;
+          const gestor=normalizarGestor(String(row[pbsCol]||'').trim());
+          if(!gestor)continue;
+          if(!gestorCount[gestor])gestorCount[gestor]=0;
+          gestorCount[gestor]++;
+        }
+        // Guardar en ppData
+        for(const[gestor,count]of Object.entries(gestorCount)){
+          ppData[mesLabel][gestor]=(ppData[mesLabel][gestor]||0)+count;
+        }
+        log(`✓ PP ${file.name}: ${Object.entries(gestorCount).map(([g,n])=>g+':'+n).join(', ')}` ,'ok');
+      }catch(e){log(`✗ Error PP ${file.name}: ${e.message}`,'err');}
+    }
+  }catch(e){log(`✗ Error cargando PP: ${e.message}`,'err');}
+}
+
 function log(msg,type='info'){const el=document.getElementById('drive-log');el.style.display='block';const d=document.createElement('div');d.className=`log-item ${type}`;d.textContent=msg;el.appendChild(d);el.scrollTop=el.scrollHeight;}
 function setProgress(pct,msg){document.getElementById('loading-bar').style.width=pct+'%';if(msg)document.getElementById('loading-msg').textContent=msg;}
 
@@ -581,6 +622,8 @@ async function loadFromDrive(){
         log(`  ✓ ${fileName}: ${cnt} registros`,'ok');
       }catch(e){log(`  ✗ Error: ${e.message}`,'err');}
     }
+    setProgress(95,'Cargando archivos de Población Priorizada...');
+    await loadPPFiles();
     setProgress(100,`✓ ${allData.length.toLocaleString()} registros cargados`);
     await new Promise(r=>setTimeout(r,700));
   }catch(e){log(`✗ ${e.message}`,'err');await new Promise(r=>setTimeout(r,2000));}
@@ -794,16 +837,97 @@ function renderIndicadores(){
   const tot=data.length;
   const gfs=[...new Set(data.map(r=>r.gf))].sort();
 
-  // ── 1. COBERTURA (pendiente) ──
-  const covCard=`<div class="ind-card">
-    <div class="ind-card-header"><div class="ind-card-title">🏥 Cobertura</div><span class="panel-badge">Pendiente</span></div>
+  // ── 1. COBERTURA ──
+  // Numerador: usuarios únicos (NUMERO_DOCUMENTO_AFILIADO) con solicitud por gestor/mes
+  // Denominador: total PP asignada al gestor en el archivo mensual (ppData)
+  const hasPP=Object.keys(ppData).length>0;
+
+  // Calcular usuarios únicos por gestor y mes
+  const covByGFMes={};
+  data.forEach(r=>{
+    const k=`${r.gf}||${r.mes}`;
+    if(!covByGFMes[k])covByGFMes[k]={gf:r.gf,mes:r.mes,ids:new Set()};
+    if(r.id)covByGFMes[k].ids.add(String(r.id).trim());
+  });
+
+  // Construir datos para gráfico línea de tiempo por GF
+  const mesesDisp=[...new Set(data.map(r=>r.mes))].filter(Boolean).sort((a,b)=>getMesNum(a)-getMesNum(b));
+
+  // Consolidado total
+  let totalUnicos=0,totalPP=0;
+  const covGFRows=gfs.map(gf=>{
+    let unicos=0,ppTotal=0;
+    mesesDisp.forEach(mes=>{
+      const k=`${gf}||${mes}`;
+      const u=covByGFMes[k]?covByGFMes[k].ids.size:0;
+      const pp=ppData[mes]&&ppData[mes][gf]?ppData[mes][gf]:0;
+      unicos+=u;ppTotal+=pp;
+    });
+    totalUnicos+=unicos;
+    totalPP+=ppTotal;
+    const pct=ppTotal>0?Math.round(unicos/ppTotal*100):null;
+    const s=pct===null?'gray':pct>=50?'green':pct>=35?'yellow':'red';
+    return{gf,unicos,ppTotal,pct,sem:s};
+  });
+  const covTotalPct=totalPP>0?Math.round(totalUnicos/totalPP*100):null;
+  const covSem=covTotalPct===null?'gray':covTotalPct>=50?'green':covTotalPct>=35?'yellow':'red';
+
+  // Gauge SVG
+  const gaugeAngle=covTotalPct!==null?Math.min(covTotalPct/100,1)*180:0;
+  const gaugeRad=(gaugeAngle-90)*Math.PI/180;
+  const gx=Math.round(100+80*Math.cos(gaugeRad)),gy=Math.round(100+80*Math.sin(gaugeRad));
+  const gaugeColor=covSem==='green'?'#22c55e':covSem==='yellow'?'#f59e0b':'#ef4444';
+  const gaugeSVG=`<svg viewBox="0 0 200 110" style="width:180px;height:auto">
+    <path d="M20,100 A80,80 0 0,1 180,100" fill="none" stroke="#243050" stroke-width="18" stroke-linecap="round"/>
+    <path d="M20,100 A80,80 0 0,1 ${gx},${gy}" fill="none" stroke="${gaugeColor}" stroke-width="18" stroke-linecap="round" style="transition:all .5s"/>
+    <text x="100" y="90" text-anchor="middle" fill="${gaugeColor}" font-size="28" font-weight="700" font-family="IBM Plex Mono">${covTotalPct!==null?covTotalPct+'%':'—'}</text>
+    <text x="100" y="108" text-anchor="middle" fill="#64748b" font-size="9" font-family="Sora">COBERTURA TOTAL</text>
+    <text x="22" y="115" fill="#ef4444" font-size="8" font-family="Sora">0%</text>
+    <text x="155" y="115" fill="#22c55e" font-size="8" font-family="Sora">100%</text>
+    <line x1="100" y1="100" x2="${gx}" y2="${gy}" stroke="${gaugeColor}" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="100" cy="100" r="5" fill="${gaugeColor}"/>
+  </svg>`;
+
+  // Línea de tiempo por GF
+  const lineChart=hasPP&&mesesDisp.length>0?`
+    <div style="overflow-x:auto;margin-top:8px">
+      <table class="ind-table" style="min-width:400px">
+        <thead><tr><th>GF</th>${mesesDisp.map(m=>`<th>${m.split(' ')[0]}</th>`).join('')}<th>Total</th></tr></thead>
+        <tbody>
+          ${covGFRows.map(r=>`<tr>
+            <td class="gf-name" style="font-size:10px">${r.gf}</td>
+            ${mesesDisp.map(mes=>{
+              const k=r.gf+'||'+mes;
+              const u=covByGFMes[k]?covByGFMes[k].ids.size:0;
+              const pp=ppData[mes]&&ppData[mes][r.gf]?ppData[mes][r.gf]:0;
+              const p=pp>0?Math.round(u/pp*100):null;
+              const c=p===null?'var(--muted)':p>=50?'var(--green)':p>=35?'var(--accent2)':'var(--red)';
+              return`<td style="font-family:var(--font-mono);font-size:10px;color:${c}">${p!==null?p+'%':'—'}</td>`;
+            }).join('')}
+            <td style="font-family:var(--font-mono);font-size:10px;color:${gaugeColor}">${r.pct!==null?r.pct+'%':'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`:'<div style="font-size:11px;color:var(--muted);padding:8px">Cargando archivos PP para calcular cobertura por mes...</div>';
+
+  const covCard=`<div class="ind-card" style="grid-column:1/-1">
+    <div class="ind-card-header">
+      <div class="ind-card-title">🏥 Cobertura</div>
+      <span class="panel-badge" style="color:${semaforoColor(covSem)}">${covTotalPct!==null?covTotalPct+'% cobertura total':'Sin datos PP'}</span>
+    </div>
     <div class="ind-card-body">
-      <div class="pending-badge">
-        <div class="pb-icon">⏳</div>
-        <div class="pb-text">Archivo PP no disponible aún</div>
-        <div class="pb-sub">Se activará cuando se cargue el archivo<br>Poblacion_Priorizada_[Mes] a Drive</div>
+      <div style="display:grid;grid-template-columns:200px 1fr;gap:24px;align-items:start">
+        <div style="text-align:center">
+          ${gaugeSVG}
+          <div style="margin-top:4px;font-size:10px;color:var(--muted)">${totalUnicos.toLocaleString()} únicos de ${totalPP.toLocaleString()} PP</div>
+          ${indSemBar(covTotalPct||0,[{tipo:'red',label:'Rojo',val:'< 35%'},{tipo:'yellow',label:'Amarillo',val:'35–49%'},{tipo:'green',label:'Verde',val:'≥ 50%'}])}
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px;font-family:var(--font-mono)">% COBERTURA POR GESTOR Y MES</div>
+          ${lineChart}
+          ${!hasPP?`<div class="pending-badge" style="margin-top:12px"><div class="pb-icon">⏳</div><div class="pb-text">Archivos PP no cargados aún</div><div class="pb-sub">Verifica que los archivos mensuales estén en la carpeta PP de Drive con el ID configurado</div></div>`:''}
+        </div>
       </div>
-      ${indSemBar(0,[{tipo:'red',label:'Rojo',val:'< 35%'},{tipo:'yellow',label:'Amarillo',val:'35–49%'},{tipo:'green',label:'Verde',val:'≥ 50%'}])}
     </div>
   </div>`;
 
