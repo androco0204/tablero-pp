@@ -978,7 +978,7 @@ function renderIndicadores(){
   const covGFOpts=gfsPP.map(g=>`<option value="${g}" ${covGFSel===g?'selected':''}>${g}</option>`).join('');
   const covMesOpts=mesesPP.map(m=>`<option value="${m}" ${covMesSel===m?'selected':''}>${m}</option>`).join('');
 
-  const covCard=hasPP?`<div class="ind-card" style="grid-column:1/-1">
+  const covCard=hasPP?`<div class="ind-card">
     <div class="ind-card-header">
       <div class="ind-card-title">🏥 Cobertura PP</div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -993,7 +993,7 @@ function renderIndicadores(){
       </div>
     </div>
     <div class="ind-card-body">
-      <div style="display:grid;grid-template-columns:200px 1fr 1fr;gap:20px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:14px">
         <div>
           ${gaugeSVG}
           ${indSemBar(covPct??0,[{tipo:'red',label:'Rojo',val:'< 35%'},{tipo:'yellow',label:'Amarillo',val:'35–49%'},{tipo:'green',label:'Verde',val:'≥ 50%'}])}
@@ -1004,9 +1004,7 @@ function renderIndicadores(){
           ${tablaGF(covGFFilas)}
         </div>
       </div>
-      <div style="margin-top:12px;background:rgba(100,116,139,.1);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:10px;color:var(--text2)">
-        ℹ Numerador: cédulas únicas (col E) con solicitud en el período · Denominador: total PP por gestor en archivo REGIONALES · Los filtros de esta tarjeta son independientes de los demás indicadores.
-      </div>
+
     </div>
   </div>`:`<div class="ind-card">
     <div class="ind-card-header"><div class="ind-card-title">🏥 Cobertura PP</div><span class="panel-badge" style="color:var(--accent2)">Sin datos PP</span></div>
@@ -1155,9 +1153,7 @@ function renderIndicadores(){
           ${tablaGF(calFilas)}
         </div>
       </div>
-      <div style="background:rgba(100,116,139,.1);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:10px;color:var(--text2)">
-        ℹ Una fila se considera incompleta si la columna <strong style="color:var(--text)">AC (Fecha de Entrega)</strong> o la columna <strong style="color:var(--text)">AD (Gestión)</strong> están en blanco.
-      </div>
+
     </div>
   </div>`;
   grid.innerHTML=covCard+efectCard+puntoCard+opCard+neCard+rCard+fallCard+calidadCard;
