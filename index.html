@@ -325,26 +325,28 @@ tbody td{padding:8px 12px;white-space:nowrap;}
 // ══════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ══════════════════════════════════════════════════════
-const CLIENT_ID = '83010513128-6lsh3o6kdltofq70o82p7rpqo0tqhmqr.apps.googleusercontent.com';
-;
+const CLIENT_ID = 'TU_CLIENT_ID.apps.googleusercontent.com';
 const ROOT_FOLDER_ID = '1Ei6dEaZyDmoir5MgugwW3GC7V1P9TSgo';
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 
 // Mapa de nombres de columna a buscar en el encabezado del Excel
 // El tablero buscará estos nombres en la fila 1 (insensible a mayúsculas/acentos)
 const COL_NAMES = {
-  ID:         ['numero_documento_afiliado','identificacion','identificación','cedula','cédula','id afiliado','id','no afiliado'],
-  COD_MED:    ['codigo_medicamento','codigo cum','código cum','cum','codigo medicamento','código medicamento'],
-  DESC_MED:   ['descripcion_medicamento','descripcion','descripción','medicamento','nombre medicamento'],
-  F_NOTIF:    ['fecha_notificacion_estado','fecha notificacion','fecha notificación','fecha de notificacion','fecha notif'],
-  MUN:        ['municipio','ciudad'],
+  ID:         ['numero_documento_afiliado','identificacion','identificación','cedula','cédula','id afiliado','no afiliado'],
+  COD_MED:    ['codigo_medicamento','codigo cum','código cum','cum','codigo medicamento'],
+  DESC_MED:   ['descripcion_medicamento','descripcion medicamento','descripcion','descripción','medicamento'],
+  F_NOTIF:    ['fecha_notificacion_estado','fecha notificacion','fecha notificación','fecha notif'],
+  MUN:        ['municipio'],
   DEP:        ['departamento'],
   REG:        ['regional'],
-  GF:         ['gestor','gestor farmaceutico','gestor farmacéutico','gf'],
-  F_GESTION:  ['fecha gestion','fecha gestión','fecha de gestion','fecha de gestión'],
-  F_ENTREGA:  ['fecha entrega','acta de entrega','fecha de entrega'],
+  GF:         ['gestor','gestor farmaceutico','gestor farmacéutico'],
+  F_GESTION:  ['fecha gestion','fecha gestión','fecha de gestion','fecha de gestión','fecha asignacion','fecha asignación'],
+  F_ENTREGA:  ['fecha entrega','fecha de entrega','acta de entrega'],
   GESTION:    ['gestion','gestión']
 };
+
+// buildColMap usa coincidencia EXACTA primero, luego parcial
+// Esto garantiza que 'gestion' no colisione con 'fecha gestion'
 
 // Normalización gestores
 const GESTOR_MAP = {
@@ -398,10 +400,13 @@ function debugColMap(headerRow, colMap){
 
 function buildColMap(headerRow){
   const map={};
+  const normalized=headerRow.map(h=>normalizeHeader(h));
   for(const[key,aliases]of Object.entries(COL_NAMES)){
-    for(let i=0;i<headerRow.length;i++){
-      const h=normalizeHeader(headerRow[i]);
-      if(aliases.some(a=>normalizeHeader(a)===h)){map[key]=i;break;}
+    // Paso 1: coincidencia EXACTA
+    for(let i=0;i<normalized.length;i++){
+      if(aliases.some(a=>normalizeHeader(a)===normalized[i])){
+        map[key]=i;break;
+      }
     }
   }
   return map;
@@ -417,17 +422,24 @@ const today=new Date();
 function normalizeEstado(val){
   const v=String(val||'').trim();
   if(!v)return'Pendiente sin gestión';
-  const vl=v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  // Orden importante: más específico primero
-  if(vl.includes('entregado en punto')||vl.includes('entregado en p')||vl.includes('entregada en punto'))return'Entregado en Punto';
-  if(vl.includes('entregada a droqueria')||vl.includes('entregado a drogueria')||vl.includes('entregado a droguer'))return'Entregado en Punto';
-  if(vl==='entregado'||vl==='entregada'||vl.includes('entregado')||vl.includes('entregada'))return'Entregado';
-  if(vl.includes('pendiente entrega')||vl.includes('pendiente de entrega')||vl==='pendiente')return'Pendiente';
-  if(vl.includes('rechazado')||vl.includes('rechazo')||vl.includes('rechazada'))return'Rechazado';
-  if(vl.includes('fallecido')||vl.includes('fallecida'))return'Fallecido';
-  if(vl.includes('cancelado')||vl.includes('cancelada'))return'Cancelado';
-  if(vl.includes('no efectivo')||vl.includes('no entregado')||vl.includes('no entregada'))return'No Efectivo';
-  return v; // valor original para estados no reconocidos
+  const vl=v.toUpperCase().trim();
+  // Valores EXACTOS confirmados en los archivos (comparación en mayúsculas)
+  if(vl==='ENTREGADO EN PUNTO')return'Entregado en Punto';
+  if(vl==='ENTREGADO')return'Entregado';
+  if(vl==='PENDIENTE ENTREGA')return'Pendiente';
+  if(vl==='RECHAZADO')return'Rechazado';
+  if(vl==='RECHAZADO POR CONTACTO')return'Rechazado';
+  if(vl==='FALLECIDO')return'Fallecido';
+  // Coincidencias parciales como fallback
+  const vn=v.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  if(vn.includes('entregado en punto')||vn.includes('entregada en punto'))return'Entregado en Punto';
+  if(vn.includes('entregada a droqueria')||vn.includes('entregado a drogueria'))return'Entregado en Punto';
+  if(vn.includes('entregado')||vn.includes('entregada'))return'Entregado';
+  if(vn.includes('pendiente'))return'Pendiente';
+  if(vn.includes('rechazado')||vn.includes('rechazada'))return'Rechazado';
+  if(vn.includes('fallecido')||vn.includes('fallecida'))return'Fallecido';
+  if(vn.includes('cancelado'))return'Cancelado';
+  return v;
 }
 
 function classifyRecord(row, colMap){
