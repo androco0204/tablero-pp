@@ -649,16 +649,24 @@ async function loadFromDrive(){
 // ── CARGA POBLACIÓN PRIORIZADA ──────────────────────────
 async function loadPPData(){
   ppData={};
+  console.log('=== INICIANDO loadPPData ===', PP_FOLDER_ID);
   log('→ Cargando Población Priorizada...','info');
   // Listar subcarpetas de mes dentro de PP
   const mesFolders=await driveList(`'${PP_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  console.log('Carpetas PP encontradas:', mesFolders.map(f=>f.name));
+  log(`  → ${mesFolders.length} carpeta(s) de mes encontradas en PP`,'info');
   for(const mesFolder of mesFolders){
     const mesLabel=getMesLabel(mesFolder.name);
-    // Buscar archivo REGIONALES dentro de cada mes
-    const files=await driveList(`'${mesFolder.id}' in parents and trashed=false and (mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.ms-excel') and name contains 'REGIONALES'`);
-    if(!files.length){ log(`  ⚠ PP ${mesFolder.name}: sin archivo REGIONALES`,'warn'); continue; }
+    console.log('Buscando archivos en:', mesFolder.name, mesFolder.id);
+    // Buscar CUALQUIER xlsx dentro de cada mes (sin filtrar por nombre)
+    const files=await driveList(`'${mesFolder.id}' in parents and trashed=false and (mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.ms-excel')`);
+    console.log(`  Archivos en ${mesFolder.name}:`, files.map(f=>f.name));
+    if(!files.length){ log(`  ⚠ PP ${mesFolder.name}: sin archivos xlsx`,'warn'); continue; }
+    // Tomar el primer archivo que contenga REGIONALES en el nombre, o el primero disponible
+    const target=files.find(f=>f.name.toUpperCase().includes('REGIONALES'))||files[0];
+    log(`  → Usando archivo: ${target.name}`,'info');
     try{
-      const buf=await driveDownload(files[0].id);
+      const buf=await driveDownload(target.id);
       const wb=XLSX.read(buf,{type:'array',cellDates:true});
       const ws=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
