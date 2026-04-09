@@ -668,16 +668,26 @@ async function loadPPData(){
     try{
       const buf=await driveDownload(target.id);
       const wb=XLSX.read(buf,{type:'array',cellDates:true});
-      const ws=wb.Sheets[wb.SheetNames[0]];
+      // Buscar pestaña UAP ACTUAL primero, si no existe usar la primera
+      const sheetName=wb.SheetNames.find(n=>n.toUpperCase().includes('UAP ACTUAL'))||wb.SheetNames[0];
+      console.log('Pestaña seleccionada:', sheetName, '| Pestañas disponibles:', wb.SheetNames);
+      const ws=wb.Sheets[sheetName];
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
       if(rows.length<2){ continue; }
-      // Mapear columnas por nombre
+      // Columnas exactas según estructura confirmada:
+      // C (índice 2) = num_id → identificador afiliado
+      // I (índice 8) = PBS → gestor farmacéutico
       const headers=rows[0].map(h=>normalizeHeader(h));
-      // Buscar columna PBS (gestor) y NUMERO_DOCUMENTO_AFILIADO
-      const pbsCol=headers.findIndex(h=>h.includes('pbs')||h.includes('uap actual')||h.includes('gestor')||h.includes('operador'));
-      const idCol=headers.findIndex(h=>h.includes('numero_documento')||h.includes('identificacion')||h.includes('cedula')||h.includes('documento'));
+      console.log('Headers PP:', headers.slice(0,13));
+      // Buscar PBS e ID por nombre de columna
+      let pbsCol=headers.findIndex(h=>h==='pbs');
+      let idCol=headers.findIndex(h=>h==='num_id'||h==='num id');
+      // Fallback por posición si no se encuentran por nombre
+      if(pbsCol<0) pbsCol=headers.findIndex(h=>h.includes('pbs'));
+      if(idCol<0) idCol=headers.findIndex(h=>h.includes('num_id')||h.includes('num id')||h.includes('numero')||h.includes('identificacion'));
+      console.log(`PP cols → pbsCol:${pbsCol}, idCol:${idCol}`);
       if(pbsCol<0||idCol<0){
-        log(`  ⚠ PP ${mesFolder.name}: no se encontraron columnas PBS/ID (headers: ${rows[0].slice(0,10).join(', ')})`,'warn');
+        log(`  ⚠ PP ${mesFolder.name}: columnas no encontradas. Headers: ${rows[0].slice(0,13).join(', ')}`,'warn');
         continue;
       }
       // Contar usuarios únicos por gestor
@@ -685,12 +695,14 @@ async function loadPPData(){
       for(let i=1;i<rows.length;i++){
         const row=rows[i];
         if(!row||row.every(c=>c===''||c===null||c===undefined))continue;
-        const gf=normalizarGestor(String(row[pbsCol]||'').trim());
+        const gfRaw=String(row[pbsCol]||'').trim();
+        const gf=normalizarGestor(gfRaw);
         const id=String(row[idCol]||'').trim();
-        if(!gf||!id)continue;
+        if(!gfRaw||!id)continue;
         if(!porGestor[gf])porGestor[gf]=new Set();
         porGestor[gf].add(id);
       }
+      console.log('Gestores PP encontrados en', mesFolder.name, ':', Object.fromEntries(Object.entries(porGestor).map(([k,v])=>[k,v.size])));
       // Guardar conteos
       if(!ppData[mesLabel])ppData[mesLabel]={};
       for(const[gf,ids]of Object.entries(porGestor)){
