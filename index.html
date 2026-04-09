@@ -65,7 +65,7 @@ select:focus{border-color:var(--accent);}
 .kpi-value{font-size:24px;font-weight:700;line-height:1;font-family:var(--font-mono);}
 .kpi-sub{font-size:10px;color:var(--text2);}
 .kpi-alert{font-size:9px;color:var(--red);font-family:var(--font-mono);}
-.c-total{color:var(--text)}.c-pending{color:var(--accent2)}.c-critical{color:var(--red)}.c-delivered{color:var(--green)}.c-rejected{color:var(--orange)}.c-point{color:var(--blue)}.c-incomplete{color:var(--red)}
+.c-total{color:var(--text)}.c-pending{color:var(--accent2)}.c-critical{color:var(--red)}.c-delivered{color:var(--green)}.c-rejected{color:var(--orange)}.c-point{color:var(--blue)}.c-incomplete{color:var(--red)}.c-muted{color:var(--muted)}
 
 /* PANELS */
 .main-content{padding:18px 28px;display:grid;grid-template-columns:1fr 1fr;gap:16px;}
@@ -227,14 +227,13 @@ tbody td{padding:8px 12px;white-space:nowrap;}
       <div class="filter-group"><span class="filter-label">Estado</span>
         <select id="filter-estado" onchange="applyFilters()">
           <option value="">Todos</option>
-          <option value="Entregado">Entregado</option>
-          <option value="Pendiente">Pendiente</option>
-          <option value="Pendiente sin gestión">Pendiente sin gestión</option>
-          <option value="Rechazado">Rechazado</option>
-          <option value="Entregado en Punto">Entregado en Punto</option>
-          <option value="Fallecido">Fallecido</option>
-          <option value="Crítico">Crítico</option>
-          <option value="Inconsistencia">Inconsistencia</option>
+          <option value="Entregado">ENTREGADO</option>
+          <option value="Entregado en Punto">ENTREGADO EN PUNTO</option>
+          <option value="Pendiente">PENDIENTE ENTREGA</option>
+          <option value="Rechazado">RECHAZADO</option>
+          <option value="Rechazado por Contacto">RECHAZADO POR CONTACTO</option>
+          <option value="Fallecido">FALLECIDO</option>
+          <option value="Pendiente sin gestión">SIN GESTIÓN</option>
         </select>
       </div>
       <div class="spacer"></div>
@@ -245,20 +244,20 @@ tbody td{padding:8px 12px;white-space:nowrap;}
 
     <div class="kpi-grid">
       <div class="kpi-card"><div class="kpi-label">Total solicitudes</div><div class="kpi-value c-total" id="kpi-total">0</div><div class="kpi-sub" id="kpi-gfs">0 gestores</div></div>
-      <div class="kpi-card"><div class="kpi-label">Pendientes</div><div class="kpi-value c-pending" id="kpi-pending">0</div><div class="kpi-sub" id="kpi-pending-pct">0%</div></div>
-      <div class="kpi-card"><div class="kpi-label">⚠ Críticos</div><div class="kpi-value c-critical" id="kpi-critical">0</div><div class="kpi-sub">+15 días sin entrega</div></div>
-      <div class="kpi-card"><div class="kpi-label">Entregados</div><div class="kpi-value c-delivered" id="kpi-delivered">0</div><div class="kpi-sub" id="kpi-delivered-pct">0%</div></div>
-      <div class="kpi-card"><div class="kpi-label">Entrega oportuna</div><div class="kpi-value c-delivered" id="kpi-oportuna">0%</div><div class="kpi-sub">≤5 días calendario</div></div>
-      <div class="kpi-card"><div class="kpi-label">Rechazados</div><div class="kpi-value c-rejected" id="kpi-rejected">0</div><div class="kpi-sub" id="kpi-rejected-pct">0%</div></div>
-      <div class="kpi-card"><div class="kpi-label">Entregados en punto</div><div class="kpi-value c-point" id="kpi-point">0</div><div class="kpi-sub">Retiro en dispensación</div></div>
-      <div class="kpi-card"><div class="kpi-label">Fallecidos</div><div class="kpi-value c-incomplete" id="kpi-fallecidos">0</div><div class="kpi-sub">Depurar de PP</div></div>
+      <div class="kpi-card"><div class="kpi-label">ENTREGADO</div><div class="kpi-value c-delivered" id="kpi-delivered">0</div><div class="kpi-sub" id="kpi-delivered-pct">0% del total</div></div>
+      <div class="kpi-card"><div class="kpi-label">ENTREGADO EN PUNTO</div><div class="kpi-value c-point" id="kpi-point">0</div><div class="kpi-sub" id="kpi-point-pct">0% del total</div></div>
+      <div class="kpi-card"><div class="kpi-label">PENDIENTE ENTREGA</div><div class="kpi-value c-pending" id="kpi-pending">0</div><div class="kpi-sub" id="kpi-pending-pct">0% del total</div></div>
+      <div class="kpi-card"><div class="kpi-label">RECHAZADO</div><div class="kpi-value c-rejected" id="kpi-rejected">0</div><div class="kpi-sub" id="kpi-rejected-pct">0% del total</div></div>
+      <div class="kpi-card"><div class="kpi-label">RECHAZADO POR CONTACTO</div><div class="kpi-value c-rejected" id="kpi-rechazado-contacto">0</div><div class="kpi-sub" id="kpi-rechazado-contacto-pct">0% del total</div></div>
+      <div class="kpi-card"><div class="kpi-label">FALLECIDO</div><div class="kpi-value c-incomplete" id="kpi-fallecidos">0</div><div class="kpi-sub" id="kpi-fallecidos-pct">0% del total</div></div>
+      <div class="kpi-card"><div class="kpi-label">SIN GESTIÓN</div><div class="kpi-value c-muted" id="kpi-sin-gestion">0</div><div class="kpi-sub" id="kpi-sin-gestion-pct">0% del total</div></div>
     </div>
 
     <div class="main-content">
       <div class="panel">
         <div class="panel-header"><div class="panel-title">📊 Resumen por Gestor</div></div>
         <div class="table-wrap"><table>
-          <thead><tr><th>GF</th><th>Total</th><th>Pend.</th><th>Crítico</th><th>Entregado</th><th>En punto</th><th>Rechazado</th><th>Fallecido</th><th>Completitud</th></tr></thead>
+          <thead><tr><th>GF</th><th>Total</th><th>ENTREGADO</th><th>EN PUNTO</th><th>PEND. ENTREGA</th><th>RECHAZADO</th><th>RECH. CONTACTO</th><th>FALLECIDO</th><th>SIN GESTIÓN</th><th>Completitud</th></tr></thead>
           <tbody id="gf-table-body"><tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📂</div><div class="empty-text">Sin datos</div></div></td></tr></tbody>
         </table></div>
       </div>
@@ -325,7 +324,7 @@ tbody td{padding:8px 12px;white-space:nowrap;}
 // ══════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ══════════════════════════════════════════════════════
-const CLIENT_ID = '83010513128-6lsh3o6kdltofq70o82p7rpqo0tqhmqr.apps.googleusercontent.com';
+const CLIENT_ID = 'TU_CLIENT_ID.apps.googleusercontent.com';
 const ROOT_FOLDER_ID = '1Ei6dEaZyDmoir5MgugwW3GC7V1P9TSgo';
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 
@@ -428,7 +427,7 @@ function normalizeEstado(val){
   if(vl==='ENTREGADO')return'Entregado';
   if(vl==='PENDIENTE ENTREGA')return'Pendiente';
   if(vl==='RECHAZADO')return'Rechazado';
-  if(vl==='RECHAZADO POR CONTACTO')return'Rechazado';
+  if(vl==='RECHAZADO POR CONTACTO')return'Rechazado por Contacto';
   if(vl==='FALLECIDO')return'Fallecido';
   // Coincidencias parciales como fallback
   const vn=v.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
@@ -436,6 +435,7 @@ function normalizeEstado(val){
   if(vn.includes('entregada a droqueria')||vn.includes('entregado a drogueria'))return'Entregado en Punto';
   if(vn.includes('entregado')||vn.includes('entregada'))return'Entregado';
   if(vn.includes('pendiente'))return'Pendiente';
+  if(vn.includes('rechazado por contacto'))return'Rechazado por Contacto';
   if(vn.includes('rechazado')||vn.includes('rechazada'))return'Rechazado';
   if(vn.includes('fallecido')||vn.includes('fallecida'))return'Fallecido';
   if(vn.includes('cancelado'))return'Cancelado';
@@ -458,10 +458,10 @@ function classifyRecord(row, colMap){
     oportuno=dias!==null&&dias<=5;
   }
 
-  // Crítico: pendiente > 15 días desde notificación
-  if((estado==='Pendiente sin gestión'||estado==='Pendiente')&&fNotif){
+  // Alerta interna si lleva más de 15 días pendiente (no cambia estado)
+  if((estado==='Pendiente'||estado==='Pendiente sin gestión')&&fNotif){
     const dp=diasCalendario(fNotif,today);
-    if(dp!==null&&dp>15){return{estado:'Crítico',alerta:`${dp}d sin entrega`,dias,oportuno};}
+    if(dp!==null&&dp>15){alerta=alerta||`${dp}d sin entrega`;}
   }
 
   // Alerta seguimiento: tiene gestión pero sin entrega > 3 días
@@ -649,26 +649,31 @@ function renderAll(){renderKPIs();renderGFTable();renderCompletitud();renderAler
 
 function renderKPIs(){
   const d=filteredData,tot=d.length;
-  const pend=d.filter(r=>r.estado==='Pendiente'||r.estado==='Pendiente sin gestión').length;
-  const crit=d.filter(r=>r.estado==='Crítico').length;
-  const del=d.filter(r=>r.estado==='Entregado').length;
-  const rej=d.filter(r=>r.estado==='Rechazado').length;
-  const pt=d.filter(r=>r.estado==='Entregado en Punto').length;
-  const fall=d.filter(r=>r.estado==='Fallecido').length;
-  const ce=d.filter(r=>r.dias!==null),op=ce.length?Math.round(ce.filter(r=>r.oportuno).length/ce.length*100):0;
-  const gfs=new Set(d.map(r=>r.gf)),pct=n=>tot?Math.round(n/tot*100)+'% del total':'0%';
+  const entregado=d.filter(r=>r.estado==='Entregado').length;
+  const enPunto=d.filter(r=>r.estado==='Entregado en Punto').length;
+  const pendiente=d.filter(r=>r.estado==='Pendiente').length;
+  const rechazado=d.filter(r=>r.estado==='Rechazado').length;
+  const rechContacto=d.filter(r=>r.estado==='Rechazado por Contacto').length;
+  const fallecido=d.filter(r=>r.estado==='Fallecido').length;
+  const sinGestion=d.filter(r=>r.estado==='Pendiente sin gestión').length;
+  const gfs=new Set(d.map(r=>r.gf));
+  const pct=n=>tot?Math.round(n/tot*100)+'% del total':'0%';
   document.getElementById('kpi-total').textContent=tot.toLocaleString();
   document.getElementById('kpi-gfs').textContent=`${gfs.size} gestor(es)`;
-  document.getElementById('kpi-pending').textContent=(pend+crit).toLocaleString();
-  document.getElementById('kpi-pending-pct').textContent=pct(pend+crit);
-  document.getElementById('kpi-critical').textContent=crit.toLocaleString();
-  document.getElementById('kpi-delivered').textContent=del.toLocaleString();
-  document.getElementById('kpi-delivered-pct').textContent=pct(del);
-  document.getElementById('kpi-oportuna').textContent=op+'%';
-  document.getElementById('kpi-rejected').textContent=rej.toLocaleString();
-  document.getElementById('kpi-rejected-pct').textContent=pct(rej);
-  document.getElementById('kpi-point').textContent=pt.toLocaleString();
-  document.getElementById('kpi-fallecidos').textContent=fall.toLocaleString();
+  document.getElementById('kpi-delivered').textContent=entregado.toLocaleString();
+  document.getElementById('kpi-delivered-pct').textContent=pct(entregado);
+  document.getElementById('kpi-point').textContent=enPunto.toLocaleString();
+  document.getElementById('kpi-point-pct').textContent=pct(enPunto);
+  document.getElementById('kpi-pending').textContent=pendiente.toLocaleString();
+  document.getElementById('kpi-pending-pct').textContent=pct(pendiente);
+  document.getElementById('kpi-rejected').textContent=rechazado.toLocaleString();
+  document.getElementById('kpi-rejected-pct').textContent=pct(rechazado);
+  document.getElementById('kpi-rechazado-contacto').textContent=rechContacto.toLocaleString();
+  document.getElementById('kpi-rechazado-contacto-pct').textContent=pct(rechContacto);
+  document.getElementById('kpi-fallecidos').textContent=fallecido.toLocaleString();
+  document.getElementById('kpi-fallecidos-pct').textContent=pct(fallecido);
+  document.getElementById('kpi-sin-gestion').textContent=sinGestion.toLocaleString();
+  document.getElementById('kpi-sin-gestion-pct').textContent=pct(sinGestion);
 }
 
 function getGFsAlerta(){return[...new Set(allData.map(r=>r.gf))].filter(gf=>{const r=allData.filter(x=>x.gf===gf),inc=r.filter(x=>!x.completo).length;return r.length>0&&inc/r.length>0.2;});}
@@ -678,13 +683,28 @@ function renderGFTable(){
   if(!gfs.length){tbody.innerHTML='<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📂</div><div class="empty-text">Sin datos</div></div></td></tr>';return;}
   tbody.innerHTML=gfs.map(gf=>{
     const rows=filteredData.filter(r=>r.gf===gf),tot=rows.length;
-    const pend=rows.filter(r=>r.estado==='Pendiente'||r.estado==='Pendiente sin gestión').length;
-    const crit=rows.filter(r=>r.estado==='Crítico').length,del=rows.filter(r=>r.estado==='Entregado').length;
-    const pt=rows.filter(r=>r.estado==='Entregado en Punto').length,rej=rows.filter(r=>r.estado==='Rechazado').length;
-    const fall=rows.filter(r=>r.estado==='Fallecido').length;
+    const entregado=rows.filter(r=>r.estado==='Entregado').length;
+    const enPunto=rows.filter(r=>r.estado==='Entregado en Punto').length;
+    const pendiente=rows.filter(r=>r.estado==='Pendiente').length;
+    const rechazado=rows.filter(r=>r.estado==='Rechazado').length;
+    const rechContacto=rows.filter(r=>r.estado==='Rechazado por Contacto').length;
+    const fallecido=rows.filter(r=>r.estado==='Fallecido').length;
+    const sinGestion=rows.filter(r=>r.estado==='Pendiente sin gestión').length;
     const inc=rows.filter(r=>!r.completo).length,cp=tot?Math.round((tot-inc)/tot*100):100;
     const cc=cp>=80?'#22c55e':cp>=60?'#f59e0b':'#ef4444';
-    return`<tr><td class="gf-name">${gf}</td><td>${tot}</td><td>${pend>0?`<span style="color:var(--accent2)">${pend}</span>`:pend}</td><td>${crit>0?`<span style="color:var(--red);font-weight:700">⚠${crit}</span>`:crit}</td><td><span style="color:var(--green)">${del}</span></td><td><span style="color:var(--blue)">${pt}</span></td><td>${rej>0?`<span style="color:var(--orange)">${rej}</span>`:rej}</td><td>${fall>0?`<span style="color:var(--muted)">${fall}</span>`:fall}</td><td><div style="display:flex;align-items:center;gap:5px"><div class="prog-bar"><div class="prog-fill" style="width:${cp}%;background:${cc}"></div></div><span style="font-size:10px;font-family:var(--font-mono);color:${cc}">${cp}%</span></div></td></tr>`;
+    const v=(n,color)=>n>0?`<span style="color:${color};font-weight:600">${n}</span>`:`<span style="color:var(--muted)">${n}</span>`;
+    return`<tr>
+      <td class="gf-name">${gf}</td>
+      <td><strong>${tot}</strong></td>
+      <td>${v(entregado,'var(--green)')}</td>
+      <td>${v(enPunto,'var(--blue)')}</td>
+      <td>${v(pendiente,'var(--accent2)')}</td>
+      <td>${v(rechazado,'var(--orange)')}</td>
+      <td>${v(rechContacto,'var(--red)')}</td>
+      <td>${v(fallecido,'var(--muted)')}</td>
+      <td>${v(sinGestion,'var(--text2)')}</td>
+      <td><div style="display:flex;align-items:center;gap:5px"><div class="prog-bar"><div class="prog-fill" style="width:${cp}%;background:${cc}"></div></div><span style="font-size:10px;font-family:var(--font-mono);color:${cc}">${cp}%</span></div></td>
+    </tr>`;
   }).join('');
 }
 
@@ -697,7 +717,7 @@ function renderCompletitud(){
 function renderAlertas(){
   const al=[],data=filteredData,gfsF=[...new Set(data.map(r=>r.gf))];
   gfsF.forEach(gf=>{const r=allData.filter(x=>x.gf===gf),inc=r.filter(x=>!x.completo).length,p=Math.round(inc/r.length*100);if(p>20)al.push({icon:'📋',title:`${gf}: ${p}% campos vacíos`,desc:`${inc} registros incompletos`,time:'Semanal'});});
-  gfsF.forEach(gf=>{const c=data.filter(r=>r.gf===gf&&r.estado==='Crítico');if(c.length)al.push({icon:'🚨',title:`${gf}: ${c.length} críticos`,desc:'Más de 15 días sin entrega',time:'48h'});});
+  gfsF.forEach(gf=>{const c=data.filter(r=>r.gf===gf&&(r.estado==='Pendiente'||r.estado==='Pendiente sin gestión')&&r.alerta&&r.alerta.includes('sin entrega'));if(c.length)al.push({icon:'🚨',title:`${gf}: ${c.length} pendientes >15 días`,desc:'Requieren seguimiento urgente',time:'48h'});});
   const rej=data.filter(r=>r.estado==='Rechazado');if(rej.length)al.push({icon:'❌',title:`${rej.length} rechazados`,desc:'Requieren gestión del motivo',time:'Inmediato'});
   const seg=data.filter(r=>r.alerta&&r.alerta.includes('Seguimiento'));if(seg.length)al.push({icon:'👁',title:`${seg.length} en seguimiento`,desc:'+3 días desde gestión sin entrega',time:'Diario'});
   const inc=data.filter(r=>r.estado==='Inconsistencia');if(inc.length)al.push({icon:'⚡',title:`${inc.length} inconsistencias`,desc:'Fecha entrega vs estado',time:'Revisar'});
@@ -713,7 +733,7 @@ function renderRechazosPreview(){
   c.innerHTML='<div style="padding:10px 16px">'+r.map(x=>`<div class="rechazo-item"><div class="rechazo-id">ID: ${x.id||'—'} · ${x.mes||''}</div><div class="rechazo-motivo">${x.gestionRaw||'Sin motivo'}</div><div class="rechazo-gf">${x.gf} · ${x.mun||'—'}</div></div>`).join('')+'</div>';
 }
 
-const EB={Entregado:'badge-green',Pendiente:'badge-yellow','Pendiente sin gestión':'badge-gray',Rechazado:'badge-red','Entregado en Punto':'badge-blue',Crítico:'badge-red',Inconsistencia:'badge-orange',Fallecido:'badge-gray',Cancelado:'badge-gray'};
+const EB={Entregado:'badge-green',Pendiente:'badge-yellow','Pendiente sin gestión':'badge-gray',Rechazado:'badge-red','Rechazado por Contacto':'badge-red','Entregado en Punto':'badge-blue',Inconsistencia:'badge-orange',Fallecido:'badge-gray',Cancelado:'badge-gray'};
 
 function renderDetailTable(){
   const s=document.getElementById('search-input').value.toLowerCase();
