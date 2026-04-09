@@ -325,24 +325,24 @@ tbody td{padding:8px 12px;white-space:nowrap;}
 // ══════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ══════════════════════════════════════════════════════
-const CLIENT_ID = '83010513128-6lsh3o6kdltofq70o82p7rpqo0tqhmqr.apps.googleusercontent.com';
+const CLIENT_ID = 'TU_CLIENT_ID.apps.googleusercontent.com';
 const ROOT_FOLDER_ID = '1Ei6dEaZyDmoir5MgugwW3GC7V1P9TSgo';
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 
 // Mapa de nombres de columna a buscar en el encabezado del Excel
 // El tablero buscará estos nombres en la fila 1 (insensible a mayúsculas/acentos)
 const COL_NAMES = {
-  ID:         ['identificacion','identificación','cedula','cédula','id afiliado','id','no afiliado','no. afiliado','numero afiliado'],
-  COD_MED:    ['codigo cum','código cum','cum','codigo medicamento','código medicamento','cod med','codigo','código'],
-  DESC_MED:   ['descripcion','descripción','medicamento','nombre medicamento','descripcion medicamento','descripción medicamento'],
-  F_NOTIF:    ['fecha notificacion','fecha notificación','f notificacion','f. notificacion','fecha notif','fecha de notificacion','fecha de notificación'],
+  ID:         ['numero_documento_afiliado','identificacion','identificación','cedula','cédula','id afiliado','id','no afiliado'],
+  COD_MED:    ['codigo_medicamento','codigo cum','código cum','cum','codigo medicamento','código medicamento'],
+  DESC_MED:   ['descripcion_medicamento','descripcion','descripción','medicamento','nombre medicamento'],
+  F_NOTIF:    ['fecha_notificacion_estado','fecha notificacion','fecha notificación','fecha de notificacion','fecha notif'],
   MUN:        ['municipio','ciudad'],
   DEP:        ['departamento'],
   REG:        ['regional'],
   GF:         ['gestor','gestor farmaceutico','gestor farmacéutico','gf'],
-  F_GESTION:  ['fecha gestion','fecha gestión','fecha de gestion','fecha de gestión','f gestion','f. gestion','fecha gestion'],
-  F_ENTREGA:  ['fecha entrega','fecha de entrega','f entrega','f. entrega','fecha de entrega'],
-  GESTION:    ['gestion','gestión','estado domicilio','estado']
+  F_GESTION:  ['fecha gestion','fecha gestión','fecha de gestion','fecha de gestión'],
+  F_ENTREGA:  ['fecha entrega','acta de entrega','fecha de entrega'],
+  GESTION:    ['gestion','gestión']
 };
 
 // Normalización gestores
@@ -417,14 +417,16 @@ function normalizeEstado(val){
   const v=String(val||'').trim();
   if(!v)return'Pendiente sin gestión';
   const vl=v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  // Orden importante: "entregado en punto" antes que "entregado"
-  if(vl.includes('entregado en punto')||vl.includes('entregado en p'))return'Entregado en Punto';
-  if(vl==='entregado'||vl.includes('entregado'))return'Entregado';
-  if(vl.includes('pendiente entrega')||vl.includes('pendiente'))return'Pendiente';
-  if(vl.includes('rechazado')||vl.includes('rechazo'))return'Rechazado';
-  if(vl.includes('fallecido'))return'Fallecido';
-  if(vl.includes('cancelado'))return'Cancelado';
-  return v;
+  // Orden importante: más específico primero
+  if(vl.includes('entregado en punto')||vl.includes('entregado en p')||vl.includes('entregada en punto'))return'Entregado en Punto';
+  if(vl.includes('entregada a droqueria')||vl.includes('entregado a drogueria')||vl.includes('entregado a droguer'))return'Entregado en Punto';
+  if(vl==='entregado'||vl==='entregada'||vl.includes('entregado')||vl.includes('entregada'))return'Entregado';
+  if(vl.includes('pendiente entrega')||vl.includes('pendiente de entrega')||vl==='pendiente')return'Pendiente';
+  if(vl.includes('rechazado')||vl.includes('rechazo')||vl.includes('rechazada'))return'Rechazado';
+  if(vl.includes('fallecido')||vl.includes('fallecida'))return'Fallecido';
+  if(vl.includes('cancelado')||vl.includes('cancelada'))return'Cancelado';
+  if(vl.includes('no efectivo')||vl.includes('no entregado')||vl.includes('no entregada'))return'No Efectivo';
+  return v; // valor original para estados no reconocidos
 }
 
 function classifyRecord(row, colMap){
