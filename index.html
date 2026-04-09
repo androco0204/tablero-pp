@@ -386,7 +386,7 @@ function normalizeHeader(h){
   return String(h||'')
     .replace(/[^\x20-\x7E\xC0-\xFF]/g,'') // quitar caracteres invisibles/especiales
     .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .normalize('NFD').replace(/[^a-z0-9 _]/g,'')
     .trim().replace(/\s+/g,' ');
 }
 
@@ -430,7 +430,7 @@ function normalizeEstado(val){
   if(vl==='RECHAZADO POR CONTACTO')return'Rechazado por Contacto';
   if(vl==='FALLECIDO')return'Fallecido';
   // Coincidencias parciales como fallback
-  const vn=v.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const vn=v.toLowerCase().normalize('NFD').replace(/[^a-z0-9 ]/g,'');
   if(vn.includes('entregado en punto')||vn.includes('entregada en punto'))return'Entregado en Punto';
   if(vn.includes('entregada a droqueria')||vn.includes('entregado a drogueria'))return'Entregado en Punto';
   if(vn.includes('entregado')||vn.includes('entregada'))return'Entregado';
