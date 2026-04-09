@@ -325,7 +325,7 @@ tbody td{padding:8px 12px;white-space:nowrap;}
 // ══════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ══════════════════════════════════════════════════════
-const CLIENT_ID = '83010513128-6lsh3o6kdltofq70o82p7rpqo0tqhmqr.apps.googleusercontent.com';
+const CLIENT_ID = 'TU_CLIENT_ID.apps.googleusercontent.com';
 const ROOT_FOLDER_ID = '1Ei6dEaZyDmoir5MgugwW3GC7V1P9TSgo';
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 
@@ -530,6 +530,14 @@ async function loadFromDrive(){
         // Mapear columnas por nombre de encabezado (fila 1)
         const colMap=buildColMap(rows[0]);
         debugColMap(rows[0], colMap); // Ver en consola F12
+        // Debug: mostrar primeros 5 valores de columna GESTION
+        if(colMap.GESTION!==undefined){
+          const sample=rows.slice(1,6).map(r=>r[colMap.GESTION]);
+          console.log(`GESTION col ${colMap.GESTION} - primeros valores:`, sample);
+        } else {
+          console.warn('⚠ COLUMNA GESTION NO ENCONTRADA en', fileName);
+          console.log('Headers raw:', rows[0]);
+        }
         let cnt=0;
 
         for(let j=1;j<rows.length;j++){
