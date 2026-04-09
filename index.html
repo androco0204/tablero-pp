@@ -324,7 +324,7 @@ tbody td{padding:8px 12px;white-space:nowrap;}
 // ══════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ══════════════════════════════════════════════════════
-const CLIENT_ID = '83010513128-6lsh3o6kdltofq70o82p7rpqo0tqhmqr.apps.googleusercontent.com';
+const CLIENT_ID = 'TU_CLIENT_ID.apps.googleusercontent.com';
 const ROOT_FOLDER_ID = '1Ei6dEaZyDmoir5MgugwW3GC7V1P9TSgo';
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 
@@ -994,8 +994,7 @@ function exportCSV(){
     (!r.gestionRaw||String(r.gestionRaw).trim()==='')?'SI':'NO'
   ]);
   // Limpiar valores: quitar saltos de línea y caracteres problemáticos
-  const clean=v=>String(v||'').replace(/[
-;]/g,' ').trim();
+  const clean=v=>{let s=String(v||'');s=s.split('\r').join(' ');s=s.split('\n').join(' ');s=s.split(';').join(' ');return s.trim();};
   const csv=[h,...rows].map(r=>r.map(v=>clean(v)).join(SEP)).join('\r\n');
   const BOM='\uFEFF';
   const blob=new Blob([BOM+csv],{type:'text/csv;charset=utf-8;'});
