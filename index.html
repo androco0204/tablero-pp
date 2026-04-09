@@ -325,24 +325,24 @@ tbody td{padding:8px 12px;white-space:nowrap;}
 // ══════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ══════════════════════════════════════════════════════
-const CLIENT_ID = '83010513128-6lsh3o6kdltofq70o82p7rpqo0tqhmqr.apps.googleusercontent.com';
+const CLIENT_ID = 'TU_CLIENT_ID.apps.googleusercontent.com';
 const ROOT_FOLDER_ID = '1Ei6dEaZyDmoir5MgugwW3GC7V1P9TSgo';
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 
 // Mapa de nombres de columna a buscar en el encabezado del Excel
 // El tablero buscará estos nombres en la fila 1 (insensible a mayúsculas/acentos)
 const COL_NAMES = {
-  ID:         ['identificacion','identificación','cedula','cédula','id afiliado','id','no afiliado'],
-  COD_MED:    ['codigo cum','código cum','cum','codigo medicamento','código medicamento','cod med'],
-  DESC_MED:   ['descripcion','descripción','medicamento','nombre medicamento'],
-  F_NOTIF:    ['fecha notificacion','fecha notificación','f notificacion','f. notificacion','fecha notif'],
+  ID:         ['identificacion','identificación','cedula','cédula','id afiliado','id','no afiliado','no. afiliado','numero afiliado'],
+  COD_MED:    ['codigo cum','código cum','cum','codigo medicamento','código medicamento','cod med','codigo','código'],
+  DESC_MED:   ['descripcion','descripción','medicamento','nombre medicamento','descripcion medicamento','descripción medicamento'],
+  F_NOTIF:    ['fecha notificacion','fecha notificación','f notificacion','f. notificacion','fecha notif','fecha de notificacion','fecha de notificación'],
   MUN:        ['municipio','ciudad'],
   DEP:        ['departamento'],
   REG:        ['regional'],
   GF:         ['gestor','gestor farmaceutico','gestor farmacéutico','gf'],
-  F_GESTION:  ['fecha de gestion','fecha de gestión','fecha gestion','fecha gestión','f gestion','f. gestion','ab'],
-  F_ENTREGA:  ['fecha de entrega','fecha entrega','f entrega','f. entrega','ac'],
-  GESTION:    ['gestion','gestión','estado','ad','estado domicilio']
+  F_GESTION:  ['fecha gestion','fecha gestión','fecha de gestion','fecha de gestión','f gestion','f. gestion','fecha gestion'],
+  F_ENTREGA:  ['fecha entrega','fecha de entrega','f entrega','f. entrega','fecha de entrega'],
+  GESTION:    ['gestion','gestión','estado domicilio','estado']
 };
 
 // Normalización gestores
@@ -381,9 +381,18 @@ function getMesNum(label){const meses={Enero:1,Febrero:2,Marzo:3,Abril:4,Mayo:5,
 // MAPEO DE COLUMNAS POR NOMBRE DE ENCABEZADO
 // ══════════════════════════════════════════════════════
 function normalizeHeader(h){
-  return String(h||'').toLowerCase()
+  return String(h||'')
+    .replace(/[^\x20-\x7E\xC0-\xFF]/g,'') // quitar caracteres invisibles/especiales
+    .toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .trim().replace(/\s+/g,' ');
+}
+
+// Debug: mostrar en consola los encabezados detectados
+function debugColMap(headerRow, colMap){
+  console.log('=== ENCABEZADOS DETECTADOS ===');
+  headerRow.forEach((h,i)=>{ if(h) console.log(`Col ${i}: "${h}" → norm: "${normalizeHeader(h)}"`); });
+  console.log('=== MAPA DE COLUMNAS ===', colMap);
 }
 
 function buildColMap(headerRow){
@@ -520,6 +529,7 @@ async function loadFromDrive(){
 
         // Mapear columnas por nombre de encabezado (fila 1)
         const colMap=buildColMap(rows[0]);
+        debugColMap(rows[0], colMap); // Ver en consola F12
         let cnt=0;
 
         for(let j=1;j<rows.length;j++){
