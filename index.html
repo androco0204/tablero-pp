@@ -558,8 +558,16 @@ async function loadFromDrive(){
     log(`✓ ${gestorFolders.length} gestor(es) encontrados`,'ok');
     let queue=[];
 
+    // Carpetas a excluir del proceso de gestores
+    const EXCLUIR_CARPETAS=['base poblacion priorizada','base población priorizada','poblacion priorizada','población priorizada','regionales','pp'];
     for(let gi=0;gi<gestorFolders.length;gi++){
       const gf=gestorFolders[gi];
+      // Saltar carpetas que son de población priorizada
+      const nombreNorm=gf.name.toLowerCase().normalize('NFD').replace(/[^a-z0-9 ]/g,'').trim();
+      if(EXCLUIR_CARPETAS.some(e=>nombreNorm.includes(e.normalize('NFD').replace(/[^a-z0-9 ]/g,'')))){
+        log(`↷ Saltando carpeta PP: ${gf.name}`,'info');
+        continue;
+      }
       const gfNombre=normalizarGestor(gf.name);
       setProgress(5+(gi/gestorFolders.length*25),`Explorando: ${gfNombre}`);
       log(`→ ${gfNombre}`,'info');
