@@ -324,7 +324,7 @@ tbody td{padding:8px 12px;white-space:nowrap;}
 // ══════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ══════════════════════════════════════════════════════
-const CLIENT_ID = '83010513128-6lsh3o6kdltofq70o82p7rpqo0tqhmqr.apps.googleusercontent.com';
+const CLIENT_ID = 'TU_CLIENT_ID.apps.googleusercontent.com';
 const ROOT_FOLDER_ID = '1Ei6dEaZyDmoir5MgugwW3GC7V1P9TSgo';
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 
@@ -904,7 +904,50 @@ function renderIndicadores(){
     </div>
   </div>`;
 
-  grid.innerHTML=covCard+efectCard+puntoCard+opCard+neCard+rCard+fallCard;
+
+  // ── 8. CALIDAD DE REPORTE - LÍNEAS EN BLANCO ──
+  // Una fila es incompleta si F_ENTREGA (AC) o GESTION (AD) están en blanco
+  const calGF=gfs.map(gf=>{
+    const r=data.filter(x=>x.gf===gf);
+    const t=r.length;
+    const incompletas=r.filter(x=>{
+      const acVacio=!x.fEntrega;
+      const adVacio=!x.gestionRaw||String(x.gestionRaw).trim()==='';
+      return acVacio||adVacio;
+    }).length;
+    const pct=t?Math.round(incompletas/t*100):0;
+    const s=pct<5?'green':pct<=10?'yellow':'red';
+    return{gf,incompletas,total:t,pct,sem:s};
+  });
+  const totalIncompletas=calGF.reduce((s,r)=>s+r.incompletas,0);
+  const totalRows=data.length;
+  const calPct=totalRows?Math.round(totalIncompletas/totalRows*100):0;
+  const calSem=calPct<5?'green':calPct<=10?'yellow':'red';
+  const calFilas=calGF.map(r=>{
+    const s=r.sem;
+    return{gf:r.gf,val:`${r.incompletas} (${r.pct}%)`,sem:s==='green'?'Verde':s==='yellow'?'Amarillo':'Rojo',color:semaforoColor(s),bgColor:s==='green'?'rgba(34,197,94,.15)':s==='yellow'?'rgba(245,158,11,.15)':'rgba(239,68,68,.15)'};
+  });
+  const calidadCard=`<div class="ind-card" style="grid-column:1/-1">
+    <div class="ind-card-header"><div class="ind-card-title">📋 Calidad de Reporte — Líneas en Blanco</div><span class="panel-badge" style="color:${semaforoColor(calSem)}">${calPct}% incompletas</span></div>
+    <div class="ind-card-body">
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start;margin-bottom:12px">
+        <div>
+          <div class="ind-big-value" style="color:${semaforoColor(calSem)}">${calPct}%</div>
+          <div class="ind-sub">Filas con AC o AD en blanco ÷ Total filas</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">${totalIncompletas} filas incompletas de ${totalRows} totales</div>
+          ${indSemBar(calPct,[{tipo:'green',label:'Verde',val:'< 5%'},{tipo:'yellow',label:'Amarillo',val:'5–10%'},{tipo:'red',label:'Rojo',val:'> 10%'}])}
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-family:var(--font-mono)">DETALLE POR GESTOR Y MES</div>
+          ${tablaGF(calFilas)}
+        </div>
+      </div>
+      <div style="background:rgba(100,116,139,.1);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:10px;color:var(--text2)">
+        ℹ Una fila se considera incompleta si la columna <strong style="color:var(--text)">AC (Fecha de Entrega)</strong> o la columna <strong style="color:var(--text)">AD (Gestión)</strong> están en blanco.
+      </div>
+    </div>
+  </div>`;
+  grid.innerHTML=covCard+efectCard+puntoCard+opCard+neCard+rCard+fallCard+calidadCard;
 }
 
 // ══════════════════════════════════════════════════════
@@ -929,10 +972,37 @@ function showRechazos(){
 function closeModal(id){document.getElementById(id).classList.remove('active');}
 
 function exportCSV(){
-  const h=['ID Afiliado','GF','Mes','Medicamento','Municipio','Regional','F Notificación','F Gestión','F Entrega','Estado GESTIÓN','Días','Alerta','Completo'];
-  const rows=filteredData.map(r=>[r.id,r.gf,r.mes,r.descMed,r.mun,r.reg,fmtDate(r.fNotif),fmtDate(r.fGestion),fmtDate(r.fEntrega),r.estado,r.dias??'',r.alerta||'',r.completo?'Sí':'No']);
-  const csv=[h,...rows].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download=`domicilios_pp_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+  // Usar tabulador como separador para mejor compatibilidad con Excel en español
+  const SEP=';';
+  const h=['ID Afiliado','GF','Mes','Cod Medicamento','Medicamento','Municipio','Departamento','Regional','F. Notificacion','F. Gestion','F. Entrega','Estado','Dias Calendario','Alerta','AC Vacio','AD Vacio'];
+  const rows=filteredData.map(r=>[
+    r.id||'',
+    r.gf||'',
+    r.mes||'',
+    r.codMed||'',
+    r.descMed||'',
+    r.mun||'',
+    r.dep||'',
+    r.reg||'',
+    fmtDate(r.fNotif),
+    fmtDate(r.fGestion),
+    fmtDate(r.fEntrega),
+    r.estado||'',
+    r.dias!=null?r.dias:'',
+    r.alerta||'',
+    !r.fEntrega?'SI':'NO',
+    (!r.gestionRaw||String(r.gestionRaw).trim()==='')?'SI':'NO'
+  ]);
+  // Limpiar valores: quitar saltos de línea y caracteres problemáticos
+  const clean=v=>String(v||'').replace(/[
+;]/g,' ').trim();
+  const csv=[h,...rows].map(r=>r.map(v=>clean(v)).join(SEP)).join('\r\n');
+  const BOM='\uFEFF';
+  const blob=new Blob([BOM+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`domicilios_pp_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
 }
 
 function showLoading(){document.getElementById('loading-overlay').classList.add('active');document.getElementById('loading-bar').style.width='0%';}
