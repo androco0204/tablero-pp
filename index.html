@@ -1279,21 +1279,21 @@ function renderIndicadores(){
 
   // ── INDICADOR: POBLACIÓN PRIORIZADA ──
   // Filtros propios independientes
-  const pobTipoSel=document.getElementById('pob-filter-tipo')?.value||'';
-  const pobRegSel=document.getElementById('pob-filter-regional')?.value||'';
-  const pobDeptoSel=document.getElementById('pob-filter-depto')?.value||'';
-  const pobMunSel=document.getElementById('pob-filter-mun')?.value||'';
-  const pobGFSel=document.getElementById('pob-filter-gf')?.value||'';
-  const pobMesSel=document.getElementById('pob-filter-mes-pob')?.value||'';
+  const pobTipoSel=msGet('pob-filter-tipo');
+  const pobRegSel=msGet('pob-filter-regional');
+  const pobDeptoSel=msGet('pob-filter-depto');
+  const pobMunSel=msGet('pob-filter-mun');
+  const pobGFSel=msGet('pob-filter-gf');
+  const pobMesSel=msGet('pob-filter-mes-pob');
 
-  // Filtrar datos de población
+  // Filtrar datos de población (selección múltiple)
   let pobFiltrada=pobData.filter(r=>{
-    if(pobTipoSel&&r.tipo!==pobTipoSel)return false;
-    if(pobRegSel&&r.regional!==pobRegSel)return false;
-    if(pobDeptoSel&&r.depto!==pobDeptoSel)return false;
-    if(pobMunSel&&r.municipio!==pobMunSel)return false;
-    if(pobGFSel&&r.pbs!==pobGFSel)return false;
-    if(pobMesSel&&r.mes!==pobMesSel)return false;
+    if(pobTipoSel.length&&!pobTipoSel.includes(r.tipo))return false;
+    if(pobRegSel.length&&!pobRegSel.includes(r.regional))return false;
+    if(pobDeptoSel.length&&!pobDeptoSel.includes(r.depto))return false;
+    if(pobMunSel.length&&!pobMunSel.includes(r.municipio))return false;
+    if(pobGFSel.length&&!pobGFSel.includes(r.pbs))return false;
+    if(pobMesSel.length&&!pobMesSel.includes(r.mes))return false;
     return true;
   });
 
@@ -1310,20 +1310,35 @@ function renderIndicadores(){
   const pobGFs=uniq(pobData.map(r=>r.pbs));
   const pobMeses=uniq(pobData.map(r=>r.mes));
 
-  const selOpt=(arr,sel,id)=>arr.map(v=>`<option value="${v}" ${sel===v?'selected':''}>${v}</option>`).join('');
-  const filterSel=(id,label,arr,sel)=>`<div class="filter-group"><span class="filter-label">${label}</span>
-    <select id="${id}" onchange="renderIndicadores()" style="font-size:11px;padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)">
-      <option value="">Todos</option>${selOpt(arr,sel,id)}
-    </select></div>`;
+  // Multiselect builder para Población Priorizada
+  function msBuild(id,label,options){
+    // Inicializar estado si no existe
+    if(!msState[id])msState[id]=new Set();
+    const sel=msState[id];
+    const tagsHtml=sel.size===0
+      ?`<span class="ms-placeholder">Todos</span>`
+      :[...sel].map(v=>`<span class="ms-tag">${v.length>12?v.slice(0,11)+'…':v}<span class="ms-tag-x" data-val="${v}">✕</span></span>`).join('');
+    return`<div class="filter-group">
+      <span class="filter-label">${label}</span>
+      <div class="ms-wrap" id="ms-${id}">
+        <div class="ms-trigger"><div class="ms-tags">${tagsHtml}</div><span class="ms-arrow">▾</span></div>
+        <div class="ms-dropdown">
+          <div class="ms-search"><input type="text" placeholder="Buscar..."></div>
+          <div class="ms-options"></div>
+          <div class="ms-clear">✕ Limpiar selección</div>
+        </div>
+      </div>
+    </div>`;
+  }
 
   // Datos para gráfico de línea temporal: eje X = mes, eje Y = población única
   // Si hay filtro de gestor → una línea por gestor; si no → una línea total
   const mesesOrdenados=[...new Set(pobData.map(r=>r.mes))].sort((a,b)=>getMesNum(a)-getMesNum(b));
-  const gfsEnFiltro=pobGFSel?[pobGFSel]:[...new Set(pobFiltrada.map(r=>r.pbs||'Sin gestor'))].sort();
+  const gfsEnFiltro=pobGFSel.length?pobGFSel:[...new Set(pobFiltrada.map(r=>r.pbs||'Sin gestor'))].sort();
   const COLORS=['#2dd4bf','#3b82f6','#22c55e','#f59e0b','#f97316','#ef4444','#a855f7','#ec4899'];
 
   // Calcular series: una por gestor si filtro activo, o total consolidado
-  const series=pobGFSel?
+  const series=pobGFSel.length?
     gfsEnFiltro.map((gf,i)=>({
       label:gf, color:COLORS[i%COLORS.length],
       puntos:mesesOrdenados.map(mes=>({
@@ -1420,14 +1435,14 @@ function renderIndicadores(){
     <div class="ind-card-body">
       <!-- Filtros propios -->
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)">
-        ${filterSel('pob-filter-mes-pob','Mes',pobMeses,pobMesSel)}
-        ${filterSel('pob-filter-tipo','Tipo',pobTipos,pobTipoSel)}
-        ${filterSel('pob-filter-regional','Regional',pobRegs,pobRegSel)}
-        ${filterSel('pob-filter-depto','Departamento',pobDeptos,pobDeptoSel)}
-        ${filterSel('pob-filter-mun','Municipio',pobMuns,pobMunSel)}
-        ${filterSel('pob-filter-gf','Gestor',pobGFs,pobGFSel)}
-        <button onclick="['pob-filter-mes-pob','pob-filter-tipo','pob-filter-regional','pob-filter-depto','pob-filter-mun','pob-filter-gf'].forEach(id=>{document.getElementById(id).value='';});renderIndicadores();"
-          style="font-size:11px;padding:4px 10px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer">✕ Limpiar</button>
+        ${msBuild('pob-filter-mes-pob','Mes',pobMeses)}
+        ${msBuild('pob-filter-tipo','Tipo',pobTipos)}
+        ${msBuild('pob-filter-regional','Regional',pobRegs)}
+        ${msBuild('pob-filter-depto','Departamento',pobDeptos)}
+        ${msBuild('pob-filter-mun','Municipio',pobMuns)}
+        ${msBuild('pob-filter-gf','Gestor',pobGFs)}
+        <button onclick="['pob-filter-mes-pob','pob-filter-tipo','pob-filter-regional','pob-filter-depto','pob-filter-mun','pob-filter-gf'].forEach(id=>{msClear(id);});renderIndicadores();"
+          style="font-size:11px;padding:4px 10px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer">✕ Limpiar todo</button>
       </div>
       <!-- KPI total -->
       <div style="display:flex;gap:24px;margin-bottom:16px;align-items:flex-end">
@@ -1449,6 +1464,15 @@ function renderIndicadores(){
     </div>
   </div>`;
   grid.innerHTML=covCard+efectCard+puntoCard+opCard+neCard+rCard+fallCard+calidadCard+pobCard;
+  // Inicializar multiselects de Población Priorizada
+  setTimeout(()=>{
+    msInit('pob-filter-mes-pob', pobMeses, 'Todos los meses');
+    msInit('pob-filter-tipo', pobTipos, 'Todos los tipos');
+    msInit('pob-filter-regional', pobRegs, 'Todas las regionales');
+    msInit('pob-filter-depto', pobDeptos, 'Todos los departamentos');
+    msInit('pob-filter-mun', pobMuns, 'Todos los municipios');
+    msInit('pob-filter-gf', pobGFs, 'Todos los gestores');
+  },50);
 }
 
 // ══════════════════════════════════════════════════════
@@ -1504,6 +1528,95 @@ function exportCSV(){
   a.download=`domicilios_pp_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
 }
+
+// ── MULTISELECT COMPONENT ──────────────────────────────
+const msState={}; // {id: Set de valores seleccionados}
+
+function msInit(id, options, placeholder='Todos'){
+  if(!msState[id]) msState[id]=new Set();
+  const wrap=document.getElementById('ms-'+id);
+  if(!wrap)return;
+  const sel=msState[id];
+
+  function render(){
+    const trigger=wrap.querySelector('.ms-trigger');
+    const tags=wrap.querySelector('.ms-tags');
+    tags.innerHTML='';
+    if(sel.size===0){
+      tags.innerHTML=`<span class="ms-placeholder">${placeholder}</span>`;
+    } else {
+      sel.forEach(v=>{
+        const t=document.createElement('span');
+        t.className='ms-tag';
+        t.innerHTML=`${v.length>15?v.slice(0,14)+'…':v}<span class="ms-tag-x" data-val="${v}">✕</span>`;
+        t.querySelector('.ms-tag-x').onclick=(e)=>{e.stopPropagation();sel.delete(v);render();renderIndicadores();};
+        tags.appendChild(t);
+      });
+    }
+    // Actualizar opciones
+    wrap.querySelectorAll('.ms-option').forEach(opt=>{
+      const v=opt.dataset.val;
+      opt.classList.toggle('selected',sel.has(v));
+      opt.querySelector('input').checked=sel.has(v);
+    });
+  }
+
+  function buildOptions(opts){
+    const container=wrap.querySelector('.ms-options');
+    container.innerHTML='';
+    if(!opts.length){container.innerHTML='<div class="ms-empty">Sin resultados</div>';return;}
+    opts.forEach(v=>{
+      const d=document.createElement('div');
+      d.className='ms-option'+(sel.has(v)?' selected':'');
+      d.dataset.val=v;
+      d.innerHTML=`<input type="checkbox" ${sel.has(v)?'checked':''}><span>${v}</span>`;
+      d.onclick=(e)=>{
+        e.stopPropagation();
+        if(sel.has(v))sel.delete(v); else sel.add(v);
+        render();renderIndicadores();
+      };
+      container.appendChild(d);
+    });
+  }
+
+  // Search
+  const searchInput=wrap.querySelector('.ms-search input');
+  searchInput.oninput=()=>{
+    const q=searchInput.value.toLowerCase();
+    buildOptions(options.filter(o=>o.toLowerCase().includes(q)));
+  };
+
+  // Clear all
+  wrap.querySelector('.ms-clear').onclick=(e)=>{e.stopPropagation();sel.clear();render();renderIndicadores();};
+
+  // Toggle dropdown
+  wrap.querySelector('.ms-trigger').onclick=(e)=>{
+    e.stopPropagation();
+    const dd=wrap.querySelector('.ms-dropdown');
+    const isOpen=dd.classList.contains('open');
+    document.querySelectorAll('.ms-dropdown.open').forEach(d=>d.classList.remove('open'));
+    document.querySelectorAll('.ms-trigger.active').forEach(t=>t.classList.remove('active'));
+    if(!isOpen){
+      dd.classList.add('open');
+      wrap.querySelector('.ms-trigger').classList.add('active');
+      searchInput.value='';
+      buildOptions(options);
+      searchInput.focus();
+    }
+  };
+
+  buildOptions(options);
+  render();
+}
+
+// Cerrar dropdowns al click fuera
+document.addEventListener('click',()=>{
+  document.querySelectorAll('.ms-dropdown.open').forEach(d=>d.classList.remove('open'));
+  document.querySelectorAll('.ms-trigger.active').forEach(t=>t.classList.remove('active'));
+});
+
+function msGet(id){return msState[id]?[...msState[id]]:[];}
+function msClear(id){if(msState[id])msState[id].clear();}
 
 function showLoading(){document.getElementById('loading-overlay').classList.add('active');document.getElementById('loading-bar').style.width='0%';}
 function hideLoading(){document.getElementById('loading-overlay').classList.remove('active');}
