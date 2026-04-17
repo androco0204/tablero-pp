@@ -1258,10 +1258,10 @@ function renderIndicadores(){
     const s=r.sem;
     return{gf:r.gf,val:`${r.incompletas} (${r.pct}%)`,sem:s==='green'?'Verde':s==='yellow'?'Amarillo':'Rojo',color:semaforoColor(s),bgColor:s==='green'?'rgba(34,197,94,.15)':s==='yellow'?'rgba(245,158,11,.15)':'rgba(239,68,68,.15)'};
   });
-  const calidadCard=`<div class="ind-card" style="grid-column:1/-1">
+  const calidadCard=`<div class="ind-card">
     <div class="ind-card-header"><div class="ind-card-title">📋 Calidad de Reporte — Líneas en Blanco</div><span class="panel-badge" style="color:${semaforoColor(calSem)}">${calPct}% incompletas</span></div>
     <div class="ind-card-body">
-      <div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start;margin-bottom:12px">
+      <div style="display:flex;flex-direction:column;gap:12px">
         <div>
           <div class="ind-big-value" style="color:${semaforoColor(calSem)}">${calPct}%</div>
           <div class="ind-sub">Filas con AC o AD en blanco ÷ Total filas</div>
@@ -1338,7 +1338,7 @@ function renderIndicadores(){
     }];
 
   const allVals=series.flatMap(s=>s.puntos.map(p=>p.val));
-  const maxVal=Math.max(...allVals,1);
+  const maxVal=Math.round(Math.max(...allVals,1)*1.2); // 20% de margen superior
   const svgW=700,svgH=300,padL=70,padB=55,padT=30,padR=30;
   const plotW=svgW-padL-padR,plotH=svgH-padB-padT;
   const nMeses=mesesOrdenados.length||1;
@@ -1436,7 +1436,6 @@ function renderIndicadores(){
           <div style="font-size:36px;font-weight:700;font-family:var(--font-mono);color:var(--accent)">${pobUnicos.toLocaleString()}</div>
           <div style="font-size:10px;color:var(--text2)">de ${pobTotal.toLocaleString()} registros totales en la base</div>
         </div>
-        <div style="font-size:10px;color:var(--muted)">Conteo de num_id únicos · Filtros independientes de otros indicadores</div>
       </div>
       <!-- Gráfico dispersión -->
       ${pobData.length===0?`<div class="empty-state"><div class="empty-icon">📂</div><div class="empty-text">Sin datos de Población Priorizada.</div></div>`:
