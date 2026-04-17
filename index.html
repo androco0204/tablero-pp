@@ -713,6 +713,96 @@ async function loadPPData(){
     }catch(e){log(`  ✗ PP ${mesFolder.name}: ${e.message}`,'err');}
   }
   log(`✓ PP cargado: ${Object.keys(ppData).length} mes(es)`,'ok');
+
+  // Cargar también archivos Poblacion_Priorizada para el indicador de población
+  await loadPobData();
+}
+
+async function loadPobData(){
+  pobData=[];
+  log('→ Cargando archivos Población Priorizada...','info');
+  // Buscar archivos que contengan "Poblacion_Priorizada" en la carpeta raíz de PP
+  const files=await driveList(`'${PP_FOLDER_ID}' in parents and trashed=false and (mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.ms-excel')`);
+  // También buscar dentro de subcarpetas de mes
+  const mesFolders=await driveList(`'${PP_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  let allFiles=[];
+  // Archivos en raíz
+  const rootFiles=files.filter(f=>f.name.toLowerCase().includes('poblacion')||f.name.toLowerCase().includes('población'));
+  allFiles.push(...rootFiles.map(f=>({...f,mes:'General'})));
+  // Archivos en subcarpetas de mes
+  for(const mesFolder of mesFolders){
+    const mFiles=await driveList(`'${mesFolder.id}' in parents and trashed=false and (mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.ms-excel')`);
+    const pobFiles=mFiles.filter(f=>f.name.toLowerCase().includes('poblacion')||f.name.toLowerCase().includes('población'));
+    allFiles.push(...pobFiles.map(f=>({...f,mes:getMesLabel(mesFolder.name)})));
+  }
+  log(`  → ${allFiles.length} archivo(s) Población encontrados`,'info');
+  console.log('Archivos Población:', allFiles.map(f=>f.name));
+
+  for(const file of allFiles){
+    try{
+      const buf=await driveDownload(file.id);
+      const wb=XLSX.read(buf,{type:'array',cellDates:true});
+      // Buscar pestaña Poblacion
+      const sheetName=wb.SheetNames.find(n=>n.toLowerCase().normalize('NFD').replace(/[^a-z0-9 ]/g,'').includes('poblacion'))||wb.SheetNames[0];
+      console.log('Archivo:', file.name, '| Pestaña:', sheetName);
+      const ws=wb.Sheets[sheetName];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(rows.length<2)continue;
+      const headers=rows[0].map(h=>normalizeHeader(h));
+      console.log('Headers Población:', headers.slice(0,15));
+      // Mapear columnas clave
+      const colIdx={
+        num_id: headers.findIndex(h=>h==='num_id'||h==='num id'||h.includes('num_id')),
+        tipo: headers.findIndex(h=>h==='tipo'||h.includes('tipo')),
+        regional: headers.findIndex(h=>h.includes('descrip_regional')||h.includes('regional')),
+        depto: headers.findIndex(h=>h.includes('descrip_depto')||h.includes('departamento')||h.includes('depto')),
+        municipio: headers.findIndex(h=>h.includes('descrip_municipio')||h.includes('municipio')),
+        pbs: headers.findIndex(h=>h==='pbs'||h.includes('pbs'))
+      };
+      console.log('Cols Población:', colIdx);
+      // Extraer mes del nombre del archivo (01.Poblacion_Priorizada_Enero → Enero)
+      const mesMatch=file.name.match(/Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre/i);
+      const mesArchivo=mesMatch?getMesLabel(mesMatch[0]):file.mes;
+
+      for(let i=1;i<rows.length;i++){
+        const row=rows[i];
+        if(!row||row.every(c=>c===''||c===null||c===undefined))continue;
+        const numId=String(row[colIdx.num_id]??'').trim();
+        if(!numId)continue;
+        // Limpiar regional: "5 REG MEDELLIN" → "MEDELLÍN"
+        const regionalRaw=String(row[colIdx.regional]??'').trim();
+        const regional=limpiarRegional(regionalRaw);
+        pobData.push({
+          num_id: numId,
+          tipo: String(row[colIdx.tipo]??'').trim(),
+          regional,
+          depto: String(row[colIdx.depto]??'').trim(),
+          municipio: String(row[colIdx.municipio]??'').trim(),
+          pbs: normalizarGestor(String(row[colIdx.pbs]??'').trim()),
+          mes: mesArchivo
+        });
+      }
+      log(`  ✓ ${file.name}: ${rows.length-1} registros (pestaña: ${sheetName})`,'ok');
+    }catch(e){log(`  ✗ ${file.name}: ${e.message}`,'err');console.error(e);}
+  }
+  log(`✓ Población cargada: ${pobData.length} registros`,'ok');
+  console.log('pobData sample:', pobData.slice(0,3));
+}
+
+function limpiarRegional(raw){
+  if(!raw)return'';
+  // Ejemplos: "5 REG MEDELLIN" → "MEDELLÍN", "1 REG BOGOTA" → "BOGOTÁ"
+  const map={
+    'BOGOTA':'BOGOTÁ','MEDELLIN':'MEDELLÍN','CALI':'CALI','BARRANQUILLA':'BARRANQUILLA',
+    'BUCARAMANGA':'BUCARAMANGA','CENTRO ORIENTE':'CENTRO ORIENTE','SUROCCIDENTE':'SUROCCIDENTE',
+    'NOROCCIDENTE':'NOROCCIDENTE','NORORIENTE':'NORORIENTE','PACIFICO':'PACÍFICO'
+  };
+  const upper=raw.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  for(const[k,v]of Object.entries(map)){
+    if(upper.includes(k.normalize('NFD').replace(/[̀-ͯ]/g,'')))return v;
+  }
+  // Si no coincide con el mapa, quitar el número y "REG" del inicio
+  return raw.replace(/^\d+\s*/,'').replace(/^REG\s*/i,'').trim();
 }
 
 // ══════════════════════════════════════════════════════
@@ -1184,7 +1274,144 @@ function renderIndicadores(){
 
     </div>
   </div>`;
-  grid.innerHTML=covCard+efectCard+puntoCard+opCard+neCard+rCard+fallCard+calidadCard;
+
+  // ── INDICADOR: POBLACIÓN PRIORIZADA ──
+  // Filtros propios independientes
+  const pobTipoSel=document.getElementById('pob-filter-tipo')?.value||'';
+  const pobRegSel=document.getElementById('pob-filter-regional')?.value||'';
+  const pobDeptoSel=document.getElementById('pob-filter-depto')?.value||'';
+  const pobMunSel=document.getElementById('pob-filter-mun')?.value||'';
+  const pobGFSel=document.getElementById('pob-filter-gf')?.value||'';
+  const pobMesSel=document.getElementById('pob-filter-mes-pob')?.value||'';
+
+  // Filtrar datos de población
+  let pobFiltrada=pobData.filter(r=>{
+    if(pobTipoSel&&r.tipo!==pobTipoSel)return false;
+    if(pobRegSel&&r.regional!==pobRegSel)return false;
+    if(pobDeptoSel&&r.depto!==pobDeptoSel)return false;
+    if(pobMunSel&&r.municipio!==pobMunSel)return false;
+    if(pobGFSel&&r.pbs!==pobGFSel)return false;
+    if(pobMesSel&&r.mes!==pobMesSel)return false;
+    return true;
+  });
+
+  // Conteo únicos por num_id
+  const pobUnicos=new Set(pobFiltrada.map(r=>r.num_id)).size;
+  const pobTotal=pobData.length>0?new Set(pobData.map(r=>r.num_id)).size:0;
+
+  // Opciones para filtros
+  const uniq=arr=>[...new Set(arr)].filter(Boolean).sort();
+  const pobTipos=uniq(pobData.map(r=>r.tipo));
+  const pobRegs=uniq(pobData.map(r=>r.regional));
+  const pobDeptos=uniq(pobData.map(r=>r.depto));
+  const pobMuns=uniq(pobData.map(r=>r.municipio));
+  const pobGFs=uniq(pobData.map(r=>r.pbs));
+  const pobMeses=uniq(pobData.map(r=>r.mes));
+
+  const selOpt=(arr,sel,id)=>arr.map(v=>`<option value="${v}" ${sel===v?'selected':''}>${v}</option>`).join('');
+  const filterSel=(id,label,arr,sel)=>`<div class="filter-group"><span class="filter-label">${label}</span>
+    <select id="${id}" onchange="renderIndicadores()" style="font-size:11px;padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)">
+      <option value="">Todos</option>${selOpt(arr,sel,id)}
+    </select></div>`;
+
+  // Datos para gráfico de dispersión: conteo por gestor + regional
+  const pobPorGF={};
+  pobFiltrada.forEach(r=>{
+    const k=r.pbs||'Sin gestor';
+    if(!pobPorGF[k])pobPorGF[k]={count:0,ids:new Set(),regionales:{}};
+    pobPorGF[k].ids.add(r.num_id);
+    const reg=r.regional||'Sin regional';
+    if(!pobPorGF[k].regionales[reg])pobPorGF[k].regionales[reg]=new Set();
+    pobPorGF[k].regionales[reg].add(r.num_id);
+  });
+
+  // Gráfico de dispersión SVG: eje X = gestores, eje Y = conteo único
+  const gfKeys=Object.keys(pobPorGF).sort((a,b)=>pobPorGF[b].ids.size-pobPorGF[a].ids.size);
+  const maxVal=gfKeys.length?pobPorGF[gfKeys[0]].ids.size:1;
+  const COLORS=['#2dd4bf','#3b82f6','#22c55e','#f59e0b','#f97316','#ef4444','#a855f7','#ec4899'];
+  const svgW=560,svgH=220,padL=60,padB=40,padT=20,padR=20;
+  const plotW=svgW-padL-padR,plotH=svgH-padB-padT;
+
+  const scatterPoints=gfKeys.map((gf,i)=>{
+    const cx=padL+Math.round((i+0.5)/gfKeys.length*plotW);
+    const val=pobPorGF[gf].ids.size;
+    const cy=padT+Math.round((1-val/maxVal)*plotH);
+    const col=COLORS[i%COLORS.length];
+    const label=gf.length>10?gf.slice(0,10)+'…':gf;
+    return{cx,cy,val,col,label,gf};
+  });
+
+  const scatterSVG=pobData.length===0?'':`<svg viewBox="0 0 ${svgW} ${svgH}" style="width:100%;max-width:${svgW}px">
+    <!-- Eje Y -->
+    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="var(--border)" stroke-width="1"/>
+    <!-- Eje X -->
+    <line x1="${padL}" y1="${padT+plotH}" x2="${padL+plotW}" y2="${padT+plotH}" stroke="var(--border)" stroke-width="1"/>
+    <!-- Grid lines Y -->
+    ${[0,0.25,0.5,0.75,1].map(v=>{
+      const y=padT+Math.round((1-v)*plotH);
+      const val=Math.round(v*maxVal);
+      return`<line x1="${padL}" y1="${y}" x2="${padL+plotW}" y2="${y}" stroke="var(--border)" stroke-width="0.5" opacity="0.5"/>
+      <text x="${padL-5}" y="${y+4}" text-anchor="end" fill="var(--muted)" font-size="9" font-family="IBM Plex Mono">${val>=1000?(val/1000).toFixed(0)+'k':val}</text>`;
+    }).join('')}
+    <!-- Puntos -->
+    ${scatterPoints.map(p=>`
+      <circle cx="${p.cx}" cy="${p.cy}" r="8" fill="${p.col}" opacity="0.85"/>
+      <text x="${p.cx}" y="${p.cy+4}" text-anchor="middle" fill="#0b0f1a" font-size="8" font-weight="700" font-family="IBM Plex Mono">${p.val>=1000?(p.val/1000).toFixed(1)+'k':p.val}</text>
+      <text x="${p.cx}" y="${padT+plotH+14}" text-anchor="middle" fill="var(--text2)" font-size="8" font-family="Sora">${p.label}</text>
+    `).join('')}
+    <!-- Título eje Y -->
+    <text x="10" y="${padT+plotH/2}" text-anchor="middle" fill="var(--muted)" font-size="9" font-family="Sora" transform="rotate(-90,10,${padT+plotH/2})">Población única</text>
+  </svg>`;
+
+  // Tabla resumen por gestor
+  const pobTablaRows=gfKeys.map(gf=>{
+    const d=pobPorGF[gf];
+    const regsStr=Object.entries(d.regionales).map(([r,ids])=>`${r}: ${ids.size}`).join(' · ');
+    return`<tr>
+      <td class="gf-name" style="font-size:10px">${gf}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--accent)">${d.ids.size.toLocaleString()}</td>
+      <td style="font-size:10px;color:var(--text2)">${regsStr}</td>
+    </tr>`;
+  }).join('');
+
+  const pobCard=`<div class="ind-card panel-full" style="grid-column:1/-1">
+    <div class="ind-card-header">
+      <div class="ind-card-title">👥 Población Priorizada</div>
+      <span class="panel-badge" style="color:var(--accent)">${pobUnicos.toLocaleString()} únicos</span>
+    </div>
+    <div class="ind-card-body">
+      <!-- Filtros propios -->
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+        ${filterSel('pob-filter-mes-pob','Mes',pobMeses,pobMesSel)}
+        ${filterSel('pob-filter-tipo','Tipo',pobTipos,pobTipoSel)}
+        ${filterSel('pob-filter-regional','Regional',pobRegs,pobRegSel)}
+        ${filterSel('pob-filter-depto','Departamento',pobDeptos,pobDeptoSel)}
+        ${filterSel('pob-filter-mun','Municipio',pobMuns,pobMunSel)}
+        ${filterSel('pob-filter-gf','Gestor',pobGFs,pobGFSel)}
+        <button onclick="['pob-filter-mes-pob','pob-filter-tipo','pob-filter-regional','pob-filter-depto','pob-filter-mun','pob-filter-gf'].forEach(id=>{document.getElementById(id).value='';});renderIndicadores();"
+          style="font-size:11px;padding:4px 10px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer">✕ Limpiar</button>
+      </div>
+      <!-- KPI total -->
+      <div style="display:flex;gap:24px;margin-bottom:16px;align-items:flex-end">
+        <div>
+          <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase">Total población única</div>
+          <div style="font-size:36px;font-weight:700;font-family:var(--font-mono);color:var(--accent)">${pobUnicos.toLocaleString()}</div>
+          <div style="font-size:10px;color:var(--text2)">de ${pobTotal.toLocaleString()} registros totales en la base</div>
+        </div>
+        <div style="font-size:10px;color:var(--muted)">Conteo de num_id únicos · Filtros independientes de otros indicadores</div>
+      </div>
+      <!-- Gráfico dispersión -->
+      ${pobData.length===0?`<div class="empty-state"><div class="empty-icon">📂</div><div class="empty-text">Sin datos de Población Priorizada. Verifica que los archivos 01.Poblacion_Priorizada_[Mes].xlsx estén en la carpeta Base Población Priorizada.</div></div>`:
+      `<div style="margin-bottom:16px">${scatterSVG}</div>
+      <!-- Tabla por gestor -->
+      <div style="max-height:200px;overflow-y:auto">
+        <table class="ind-table"><thead><tr><th>Gestor (PBS)</th><th>Población única</th><th>Por regional</th></tr></thead>
+        <tbody>${pobTablaRows||'<tr><td colspan="3" style="text-align:center;color:var(--muted)">Sin datos con los filtros actuales</td></tr>'}</tbody>
+        </table>
+      </div>`}
+    </div>
+  </div>`;
+  grid.innerHTML=covCard+efectCard+puntoCard+opCard+neCard+rCard+fallCard+calidadCard+pobCard;
 }
 
 // ══════════════════════════════════════════════════════
