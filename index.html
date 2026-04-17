@@ -167,6 +167,38 @@ tbody td{padding:8px 12px;white-space:nowrap;}
 .search-input{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 11px;color:var(--text);font-size:11px;outline:none;width:240px;font-family:var(--font);}
 .search-input:focus{border-color:var(--accent);}
 ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:var(--surface)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+  /* MULTISELECT FILTER */
+  .ms-wrap { position:relative; min-width:140px; max-width:200px; }
+  .ms-trigger { display:flex; align-items:center; justify-content:space-between; gap:6px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:5px 10px; cursor:pointer; font-size:11px; color:var(--text); font-family:var(--font); min-height:30px; max-height:30px; user-select:none; white-space:nowrap; overflow:hidden; }
+  .ms-trigger:hover { border-color:var(--accent); }
+  .ms-trigger.active { border-color:var(--accent); background:var(--surface); }
+  .ms-label { flex:1; overflow:hidden; text-overflow:ellipsis; font-size:11px; }
+  .ms-count { background:var(--accent); color:#0b0f1a; border-radius:10px; padding:1px 6px; font-size:10px; font-weight:700; font-family:var(--font-mono); flex-shrink:0; }
+  .ms-arrow { font-size:9px; color:var(--muted); flex-shrink:0; transition:transform .2s; }
+  .ms-trigger.active .ms-arrow { transform:rotate(180deg); }
+  .ms-dropdown { position:absolute; top:calc(100% + 4px); left:0; width:240px; background:var(--surface); border:1px solid var(--accent); border-radius:8px; z-index:9999; box-shadow:0 8px 32px rgba(0,0,0,.5); display:none; flex-direction:column; overflow:hidden; }
+  .ms-dropdown.open { display:flex; }
+  .ms-search { padding:8px 10px; border-bottom:1px solid var(--border); background:var(--surface2); display:flex; align-items:center; gap:6px; }
+  .ms-search input { flex:1; background:transparent; border:none; outline:none; color:var(--text); font-size:12px; font-family:var(--font); }
+  .ms-search input::placeholder { color:var(--muted); }
+  .ms-select-all { padding:5px 12px; border-bottom:1px solid var(--border); font-size:10px; color:var(--accent); cursor:pointer; display:flex; align-items:center; gap:6px; font-family:var(--font-mono); }
+  .ms-select-all:hover { background:var(--surface2); }
+  .ms-options { max-height:180px; overflow-y:auto; }
+  .ms-option { display:flex; align-items:center; gap:8px; padding:6px 12px; cursor:pointer; font-size:11px; transition:background .15s; border-bottom:1px solid rgba(36,48,80,.3); }
+  .ms-option:last-child { border-bottom:none; }
+  .ms-option:hover { background:var(--surface2); }
+  .ms-option.selected { background:rgba(45,212,191,.08); }
+  .ms-checkbox { width:14px; height:14px; border:1.5px solid var(--border); border-radius:3px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .ms-option.selected .ms-checkbox { background:var(--accent); border-color:var(--accent); }
+  .ms-checkbox-tick { color:#0b0f1a; font-size:9px; font-weight:700; display:none; }
+  .ms-option.selected .ms-checkbox-tick { display:block; }
+  .ms-opt-label { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ms-footer { padding:6px 12px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:var(--surface2); }
+  .ms-count-label { font-size:10px; color:var(--muted); font-family:var(--font-mono); }
+  .ms-clear-btn { font-size:10px; color:var(--red); cursor:pointer; font-family:var(--font-mono); }
+  .ms-clear-btn:hover { text-decoration:underline; }
+  .ms-empty { padding:14px; text-align:center; color:var(--muted); font-size:11px; }
 </style>
 </head>
 <body>
@@ -1321,11 +1353,19 @@ function renderIndicadores(){
     return`<div class="filter-group">
       <span class="filter-label">${label}</span>
       <div class="ms-wrap" id="ms-${id}">
-        <div class="ms-trigger"><div class="ms-tags">${tagsHtml}</div><span class="ms-arrow">▾</span></div>
+        <div class="ms-trigger">
+          <span class="ms-label">Todos</span>
+          <span class="ms-count" style="display:none">0</span>
+          <span class="ms-arrow">▾</span>
+        </div>
         <div class="ms-dropdown">
-          <div class="ms-search"><input type="text" placeholder="Buscar..."></div>
+          <div class="ms-search"><span class="ms-search-icon">🔍</span><input type="text" placeholder="Buscar..."></div>
+          <div class="ms-select-all">☐ Seleccionar todos</div>
           <div class="ms-options"></div>
-          <div class="ms-clear">✕ Limpiar selección</div>
+          <div class="ms-footer">
+            <span class="ms-count-label">0 seleccionado(s)</span>
+            <span class="ms-clear-btn">✕ Limpiar</span>
+          </div>
         </div>
       </div>
     </div>`;
@@ -1530,7 +1570,7 @@ function exportCSV(){
 }
 
 // ── MULTISELECT COMPONENT ──────────────────────────────
-const msState={}; // {id: Set de valores seleccionados}
+const msState={};
 
 function msInit(id, options, placeholder='Todos'){
   if(!msState[id]) msState[id]=new Set();
@@ -1538,56 +1578,82 @@ function msInit(id, options, placeholder='Todos'){
   if(!wrap)return;
   const sel=msState[id];
 
-  function render(){
-    const trigger=wrap.querySelector('.ms-trigger');
-    const tags=wrap.querySelector('.ms-tags');
-    tags.innerHTML='';
-    if(sel.size===0){
-      tags.innerHTML=`<span class="ms-placeholder">${placeholder}</span>`;
-    } else {
-      sel.forEach(v=>{
-        const t=document.createElement('span');
-        t.className='ms-tag';
-        t.innerHTML=`${v.length>15?v.slice(0,14)+'…':v}<span class="ms-tag-x" data-val="${v}">✕</span>`;
-        t.querySelector('.ms-tag-x').onclick=(e)=>{e.stopPropagation();sel.delete(v);render();renderIndicadores();};
-        tags.appendChild(t);
-      });
-    }
-    // Actualizar opciones
-    wrap.querySelectorAll('.ms-option').forEach(opt=>{
-      const v=opt.dataset.val;
-      opt.classList.toggle('selected',sel.has(v));
-      opt.querySelector('input').checked=sel.has(v);
-    });
+  function getLabel(){
+    if(sel.size===0)return placeholder;
+    if(sel.size===1)return[...sel][0];
+    return `${[...sel][0].slice(0,12)}… +${sel.size-1}`;
   }
 
-  function buildOptions(opts){
+  function renderTrigger(){
+    const lbl=wrap.querySelector('.ms-label');
+    const cnt=wrap.querySelector('.ms-count');
+    if(lbl) lbl.textContent=getLabel();
+    if(cnt){ cnt.textContent=sel.size; cnt.style.display=sel.size>0?'inline':'none'; }
+  }
+
+  function renderOptions(opts){
     const container=wrap.querySelector('.ms-options');
-    container.innerHTML='';
+    const footer=wrap.querySelector('.ms-count-label');
     if(!opts.length){container.innerHTML='<div class="ms-empty">Sin resultados</div>';return;}
-    opts.forEach(v=>{
-      const d=document.createElement('div');
-      d.className='ms-option'+(sel.has(v)?' selected':'');
-      d.dataset.val=v;
-      d.innerHTML=`<input type="checkbox" ${sel.has(v)?'checked':''}><span>${v}</span>`;
-      d.onclick=(e)=>{
+    container.innerHTML=opts.map(v=>`
+      <div class="ms-option${sel.has(v)?' selected':''}" data-val="${v.replace(/"/g,'&quot;')}">
+        <div class="ms-checkbox"><span class="ms-checkbox-tick">✓</span></div>
+        <span class="ms-opt-label" title="${v}">${v}</span>
+      </div>`).join('');
+    if(footer) footer.textContent=`${sel.size} seleccionado(s)`;
+    container.querySelectorAll('.ms-option').forEach(opt=>{
+      opt.onclick=(e)=>{
         e.stopPropagation();
-        if(sel.has(v))sel.delete(v); else sel.add(v);
-        render();renderIndicadores();
+        const v=opt.dataset.val;
+        if(sel.has(v)){sel.delete(v);opt.classList.remove('selected');}
+        else{sel.add(v);opt.classList.add('selected');}
+        opt.querySelector('.ms-checkbox-tick').style.display=sel.has(v)?'block':'none';
+        opt.querySelector('.ms-checkbox').style.background=sel.has(v)?'var(--accent)':'';
+        opt.querySelector('.ms-checkbox').style.borderColor=sel.has(v)?'var(--accent)':'var(--border)';
+        if(footer) footer.textContent=`${sel.size} seleccionado(s)`;
+        renderTrigger();
+        renderIndicadores();
       };
-      container.appendChild(d);
     });
   }
 
   // Search
   const searchInput=wrap.querySelector('.ms-search input');
-  searchInput.oninput=()=>{
-    const q=searchInput.value.toLowerCase();
-    buildOptions(options.filter(o=>o.toLowerCase().includes(q)));
-  };
+  if(searchInput){
+    searchInput.oninput=()=>{
+      const q=searchInput.value.toLowerCase();
+      renderOptions(options.filter(o=>o.toLowerCase().includes(q)));
+    };
+  }
 
-  // Clear all
-  wrap.querySelector('.ms-clear').onclick=(e)=>{e.stopPropagation();sel.clear();render();renderIndicadores();};
+  // Select all
+  const selectAll=wrap.querySelector('.ms-select-all');
+  if(selectAll){
+    selectAll.onclick=(e)=>{
+      e.stopPropagation();
+      const q=searchInput?.value.toLowerCase()||'';
+      const visible=options.filter(o=>o.toLowerCase().includes(q));
+      const allSelected=visible.every(v=>sel.has(v));
+      if(allSelected){ visible.forEach(v=>sel.delete(v)); }
+      else { visible.forEach(v=>sel.add(v)); }
+      renderOptions(visible);
+      renderTrigger();
+      renderIndicadores();
+    };
+  }
+
+  // Clear
+  const clearBtn=wrap.querySelector('.ms-clear-btn');
+  if(clearBtn){
+    clearBtn.onclick=(e)=>{
+      e.stopPropagation();
+      sel.clear();
+      const q=searchInput?.value.toLowerCase()||'';
+      renderOptions(options.filter(o=>o.toLowerCase().includes(q)));
+      renderTrigger();
+      renderIndicadores();
+    };
+  }
 
   // Toggle dropdown
   wrap.querySelector('.ms-trigger').onclick=(e)=>{
@@ -1599,17 +1665,15 @@ function msInit(id, options, placeholder='Todos'){
     if(!isOpen){
       dd.classList.add('open');
       wrap.querySelector('.ms-trigger').classList.add('active');
-      searchInput.value='';
-      buildOptions(options);
-      searchInput.focus();
+      if(searchInput){searchInput.value='';searchInput.focus();}
+      renderOptions(options);
     }
   };
 
-  buildOptions(options);
-  render();
+  renderOptions(options);
+  renderTrigger();
 }
 
-// Cerrar dropdowns al click fuera
 document.addEventListener('click',()=>{
   document.querySelectorAll('.ms-dropdown.open').forEach(d=>d.classList.remove('open'));
   document.querySelectorAll('.ms-trigger.active').forEach(t=>t.classList.remove('active'));
@@ -1617,7 +1681,6 @@ document.addEventListener('click',()=>{
 
 function msGet(id){return msState[id]?[...msState[id]]:[];}
 function msClear(id){if(msState[id])msState[id].clear();}
-
 function showLoading(){document.getElementById('loading-overlay').classList.add('active');document.getElementById('loading-bar').style.width='0%';}
 function hideLoading(){document.getElementById('loading-overlay').classList.remove('active');}
 async function refreshData(){if(window._gToken)await loadFromDrive();}
