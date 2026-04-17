@@ -753,12 +753,14 @@ async function loadPobData(){
       // Mapear columnas clave
       const colIdx={
         num_id: headers.findIndex(h=>h==='num_id'||h==='num id'||h.includes('num_id')),
-        tipo: headers.findIndex(h=>h==='tipo'||h.includes('tipo')),
-        regional: headers.findIndex(h=>h.includes('descrip_regional')||h.includes('regional')),
-        depto: headers.findIndex(h=>h.includes('descrip_depto')||h.includes('departamento')||h.includes('depto')),
-        municipio: headers.findIndex(h=>h.includes('descrip_municipio')||h.includes('municipio')),
-        pbs: headers.findIndex(h=>h==='pbs'||h.includes('pbs'))
+        tipo: headers.findIndex(h=>h==='tipo'),
+        regional: headers.findIndex(h=>h.includes('descrip_regional')||h==='regional'),
+        depto: headers.findIndex(h=>h.includes('descripcion_depto')||h.includes('descrip_depto')||h==='descripcion depto'||h==='departamento'),
+        municipio: headers.findIndex(h=>h.includes('descripcion_municipio')||h.includes('descrip_municipio')||h==='municipio'),
+        pbs: headers.findIndex(h=>h==='pbs')
       };
+      console.log('Headers raw:', rows[0].slice(0,15));
+      console.log('ColIdx:', colIdx);
       console.log('Cols Población:', colIdx);
       // Extraer mes del nombre del archivo (01.Poblacion_Priorizada_Enero → Enero)
       const mesMatch=file.name.match(/Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre/i);
@@ -1314,54 +1316,90 @@ function renderIndicadores(){
       <option value="">Todos</option>${selOpt(arr,sel,id)}
     </select></div>`;
 
-  // Datos para gráfico de dispersión: conteo por gestor + regional
+  // Datos para gráfico de línea temporal: eje X = mes, eje Y = población única
+  // Si hay filtro de gestor → una línea por gestor; si no → una línea total
+  const mesesOrdenados=[...new Set(pobData.map(r=>r.mes))].sort((a,b)=>getMesNum(a)-getMesNum(b));
+  const gfsEnFiltro=pobGFSel?[pobGFSel]:[...new Set(pobFiltrada.map(r=>r.pbs||'Sin gestor'))].sort();
+  const COLORS=['#2dd4bf','#3b82f6','#22c55e','#f59e0b','#f97316','#ef4444','#a855f7','#ec4899'];
+
+  // Calcular series: una por gestor si filtro activo, o total consolidado
+  const series=pobGFSel?
+    gfsEnFiltro.map((gf,i)=>({
+      label:gf, color:COLORS[i%COLORS.length],
+      puntos:mesesOrdenados.map(mes=>({
+        mes, val:new Set(pobFiltrada.filter(r=>r.mes===mes&&r.pbs===gf).map(r=>r.num_id)).size
+      }))
+    }))
+    :[{
+      label:'Total PP', color:'#2dd4bf',
+      puntos:mesesOrdenados.map(mes=>({
+        mes, val:new Set(pobFiltrada.filter(r=>r.mes===mes).map(r=>r.num_id)).size
+      }))
+    }];
+
+  const allVals=series.flatMap(s=>s.puntos.map(p=>p.val));
+  const maxVal=Math.max(...allVals,1);
+  const svgW=700,svgH=300,padL=70,padB=55,padT=30,padR=30;
+  const plotW=svgW-padL-padR,plotH=svgH-padB-padT;
+  const nMeses=mesesOrdenados.length||1;
+
+  function xPos(i){return padL+Math.round((i+0.5)/nMeses*plotW);}
+  function yPos(v){return padT+Math.round((1-v/maxVal)*plotH);}
+  function fmtVal(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}
+
+  const lineChartSVG=pobData.length===0?'':`<svg viewBox="0 0 ${svgW} ${svgH}" style="width:100%;max-width:${svgW}px;display:block">
+    <!-- Fondo -->
+    <rect x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="var(--surface2)" rx="4" opacity="0.3"/>
+    <!-- Grid Y -->
+    ${[0,0.25,0.5,0.75,1].map(v=>{
+      const y=yPos(v*maxVal);
+      return`<line x1="${padL}" y1="${y}" x2="${padL+plotW}" y2="${y}" stroke="var(--border)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="${padL-8}" y="${y+4}" text-anchor="end" fill="var(--muted)" font-size="10" font-family="IBM Plex Mono">${fmtVal(Math.round(v*maxVal))}</text>`;
+    }).join('')}
+    <!-- Ejes -->
+    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="var(--border)" stroke-width="1.5"/>
+    <line x1="${padL}" y1="${padT+plotH}" x2="${padL+plotW}" y2="${padT+plotH}" stroke="var(--border)" stroke-width="1.5"/>
+    <!-- Labels eje X (meses) -->
+    ${mesesOrdenados.map((mes,i)=>`
+      <text x="${xPos(i)}" y="${padT+plotH+18}" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="Sora">${mes.split(' ')[0]}</text>
+      <text x="${xPos(i)}" y="${padT+plotH+30}" text-anchor="middle" fill="var(--muted)" font-size="10" font-family="IBM Plex Mono">${mes.split(' ')[1]||''}</text>
+      <line x1="${xPos(i)}" y1="${padT+plotH}" x2="${xPos(i)}" y2="${padT+plotH+6}" stroke="var(--border)" stroke-width="1"/>
+    `).join('')}
+    <!-- Título eje Y -->
+    <text x="14" y="${padT+plotH/2}" text-anchor="middle" fill="var(--muted)" font-size="10" font-family="Sora" transform="rotate(-90,14,${padT+plotH/2})">Población única</text>
+    <!-- Series (líneas + puntos) -->
+    ${series.map((serie,si)=>{
+      const pts=serie.puntos.filter(p=>p.val>0);
+      if(!pts.length)return'';
+      const lineD=serie.puntos.map((p,i)=>`${i===0?'M':'L'} ${xPos(i)} ${yPos(p.val)}`).join(' ');
+      return`
+        <!-- Línea -->
+        <path d="${lineD}" fill="none" stroke="${serie.color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <!-- Área bajo la curva -->
+        <path d="${lineD} L ${xPos(serie.puntos.length-1)} ${yPos(0)} L ${xPos(0)} ${yPos(0)} Z" fill="${serie.color}" opacity="0.08"/>
+        <!-- Puntos con valores -->
+        ${serie.puntos.map((p,i)=>p.val>0?`
+          <circle cx="${xPos(i)}" cy="${yPos(p.val)}" r="6" fill="${serie.color}" stroke="var(--bg)" stroke-width="2"/>
+          <text x="${xPos(i)}" y="${yPos(p.val)-12}" text-anchor="middle" fill="${serie.color}" font-size="11" font-weight="700" font-family="IBM Plex Mono">${fmtVal(p.val)}</text>
+        `:'').join('')}
+        <!-- Leyenda -->
+        ${si===0?`<rect x="${padL+8}" y="${padT+8}" width="10" height="10" fill="${serie.color}" rx="2"/>
+        <text x="${padL+22}" y="${padT+17}" fill="${serie.color}" font-size="10" font-family="Sora">${serie.label}</text>`:''}
+      `;
+    }).join('')}
+  </svg>`;
+
+  // Tabla por gestor
   const pobPorGF={};
   pobFiltrada.forEach(r=>{
     const k=r.pbs||'Sin gestor';
-    if(!pobPorGF[k])pobPorGF[k]={count:0,ids:new Set(),regionales:{}};
+    if(!pobPorGF[k])pobPorGF[k]={ids:new Set(),regionales:{}};
     pobPorGF[k].ids.add(r.num_id);
     const reg=r.regional||'Sin regional';
     if(!pobPorGF[k].regionales[reg])pobPorGF[k].regionales[reg]=new Set();
     pobPorGF[k].regionales[reg].add(r.num_id);
   });
-
-  // Gráfico de dispersión SVG: eje X = gestores, eje Y = conteo único
   const gfKeys=Object.keys(pobPorGF).sort((a,b)=>pobPorGF[b].ids.size-pobPorGF[a].ids.size);
-  const maxVal=gfKeys.length?pobPorGF[gfKeys[0]].ids.size:1;
-  const COLORS=['#2dd4bf','#3b82f6','#22c55e','#f59e0b','#f97316','#ef4444','#a855f7','#ec4899'];
-  const svgW=560,svgH=220,padL=60,padB=40,padT=20,padR=20;
-  const plotW=svgW-padL-padR,plotH=svgH-padB-padT;
-
-  const scatterPoints=gfKeys.map((gf,i)=>{
-    const cx=padL+Math.round((i+0.5)/gfKeys.length*plotW);
-    const val=pobPorGF[gf].ids.size;
-    const cy=padT+Math.round((1-val/maxVal)*plotH);
-    const col=COLORS[i%COLORS.length];
-    const label=gf.length>10?gf.slice(0,10)+'…':gf;
-    return{cx,cy,val,col,label,gf};
-  });
-
-  const scatterSVG=pobData.length===0?'':`<svg viewBox="0 0 ${svgW} ${svgH}" style="width:100%;max-width:${svgW}px">
-    <!-- Eje Y -->
-    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="var(--border)" stroke-width="1"/>
-    <!-- Eje X -->
-    <line x1="${padL}" y1="${padT+plotH}" x2="${padL+plotW}" y2="${padT+plotH}" stroke="var(--border)" stroke-width="1"/>
-    <!-- Grid lines Y -->
-    ${[0,0.25,0.5,0.75,1].map(v=>{
-      const y=padT+Math.round((1-v)*plotH);
-      const val=Math.round(v*maxVal);
-      return`<line x1="${padL}" y1="${y}" x2="${padL+plotW}" y2="${y}" stroke="var(--border)" stroke-width="0.5" opacity="0.5"/>
-      <text x="${padL-5}" y="${y+4}" text-anchor="end" fill="var(--muted)" font-size="9" font-family="IBM Plex Mono">${val>=1000?(val/1000).toFixed(0)+'k':val}</text>`;
-    }).join('')}
-    <!-- Puntos -->
-    ${scatterPoints.map(p=>`
-      <circle cx="${p.cx}" cy="${p.cy}" r="8" fill="${p.col}" opacity="0.85"/>
-      <text x="${p.cx}" y="${p.cy+4}" text-anchor="middle" fill="#0b0f1a" font-size="8" font-weight="700" font-family="IBM Plex Mono">${p.val>=1000?(p.val/1000).toFixed(1)+'k':p.val}</text>
-      <text x="${p.cx}" y="${padT+plotH+14}" text-anchor="middle" fill="var(--text2)" font-size="8" font-family="Sora">${p.label}</text>
-    `).join('')}
-    <!-- Título eje Y -->
-    <text x="10" y="${padT+plotH/2}" text-anchor="middle" fill="var(--muted)" font-size="9" font-family="Sora" transform="rotate(-90,10,${padT+plotH/2})">Población única</text>
-  </svg>`;
 
   // Tabla resumen por gestor
   const pobTablaRows=gfKeys.map(gf=>{
@@ -1401,8 +1439,8 @@ function renderIndicadores(){
         <div style="font-size:10px;color:var(--muted)">Conteo de num_id únicos · Filtros independientes de otros indicadores</div>
       </div>
       <!-- Gráfico dispersión -->
-      ${pobData.length===0?`<div class="empty-state"><div class="empty-icon">📂</div><div class="empty-text">Sin datos de Población Priorizada. Verifica que los archivos 01.Poblacion_Priorizada_[Mes].xlsx estén en la carpeta Base Población Priorizada.</div></div>`:
-      `<div style="margin-bottom:16px">${scatterSVG}</div>
+      ${pobData.length===0?`<div class="empty-state"><div class="empty-icon">📂</div><div class="empty-text">Sin datos de Población Priorizada.</div></div>`:
+      `<div style="margin-bottom:16px">${lineChartSVG}</div>
       <!-- Tabla por gestor -->
       <div style="max-height:200px;overflow-y:auto">
         <table class="ind-table"><thead><tr><th>Gestor (PBS)</th><th>Población única</th><th>Por regional</th></tr></thead>
