@@ -116,7 +116,7 @@ tbody td{padding:8px 12px;white-space:nowrap;}
 .rechazo-motivo{font-size:11px;margin-top:3px;}
 .rechazo-gf{font-size:9px;color:var(--muted);font-family:var(--font-mono);margin-top:2px;}
 
-/* ── INDICADORES TAB ── */
+/* -- INDICADORES TAB -- */
 .ind-content{padding:20px 28px;}
 .ind-filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
 .ind-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
@@ -264,7 +264,7 @@ tbody td{padding:8px 12px;white-space:nowrap;}
   <div class="header-right">
     <span id="last-update"></span>
     <span id="user-info"></span>
-    <button class="btn btn-primary btn-sm" onclick="refreshData()">↻ Actualizar</button>
+    <button class="btn btn-primary btn-sm" onclick="refreshData()">- Actualizar</button>
   </div>
 </header>
 
@@ -278,9 +278,9 @@ tbody td{padding:8px 12px;white-space:nowrap;}
     <button class="tab-btn" id="tab-btn-admin" onclick="switchTab('admin')" style="margin-left:auto;color:var(--muted)">⚙ Admin</button>
   </div>
 
-  <!-- ══════════════════════════════════════════════ -->
+  <!-- ---------------------------------------------- -->
   <!-- TAB 1: SEGUIMIENTO -->
-  <!-- ══════════════════════════════════════════════ -->
+  <!-- ---------------------------------------------- -->
   <div id="tab-seguimiento" class="tab-content active">
 
     <div class="top-bar">
@@ -302,7 +302,7 @@ tbody td{padding:8px 12px;white-space:nowrap;}
       <div class="spacer"></div>
       <button class="btn btn-outline btn-sm" onclick="clearFilters()">✕ Limpiar</button>
       <span style="font-size:10px;color:var(--muted);font-family:var(--font-mono)" id="record-count">0 registros</span>
-      <button class="btn btn-outline btn-sm" onclick="exportCSV()">↓ CSV</button>
+      <button class="btn btn-outline btn-sm" onclick="exportCSV()">- CSV</button>
     </div>
 
     <div class="kpi-grid">
@@ -354,9 +354,9 @@ tbody td{padding:8px 12px;white-space:nowrap;}
 
   </div><!-- /tab-seguimiento -->
 
-  <!-- ══════════════════════════════════════════════ -->
+  <!-- ---------------------------------------------- -->
   <!-- TAB 2: INDICADORES -->
-  <!-- ══════════════════════════════════════════════ -->
+  <!-- ---------------------------------------------- -->
   <div id="tab-indicadores" class="tab-content">
     <div class="ind-content">
       <div class="ind-filter-bar">
@@ -373,9 +373,9 @@ tbody td{padding:8px 12px;white-space:nowrap;}
     </div>
   </div><!-- /tab-indicadores -->
 
-  <!-- ══════════════════════════════════════════════ -->
+  <!-- ---------------------------------------------- -->
   <!-- TAB 3: ADMINISTRACIÓN -->
-  <!-- ══════════════════════════════════════════════ -->
+  <!-- ---------------------------------------------- -->
   <div id="tab-admin" class="tab-content">
     <div class="admin-content">
       <div class="admin-header">
@@ -412,7 +412,7 @@ tbody td{padding:8px 12px;white-space:nowrap;}
           <span style="color:var(--muted);font-size:11px">▾</span>
         </div>
         <div class="admin-section-body" id="sec-gestores">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Alias → Nombre oficial. El alias es como aparece el nombre en los archivos Excel (en minúsculas).</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Alias - Nombre oficial. El alias es como aparece el nombre en los archivos Excel (en minúsculas).</div>
           <div id="gestores-list"></div>
           <button class="btn btn-outline btn-sm" onclick="addGestorRow()" style="margin-top:8px">+ Agregar gestor</button>
         </div>
@@ -523,7 +523,7 @@ tbody td{padding:8px 12px;white-space:nowrap;}
       <!-- BARRA GUARDAR -->
       <div class="admin-save-bar">
         <button class="btn btn-primary" onclick="saveAdminConfig()">💾 Guardar cambios</button>
-        <button class="btn btn-outline" onclick="resetAdminConfig()">↺ Restaurar defaults</button>
+        <button class="btn btn-outline" onclick="resetAdminConfig()">- Restaurar defaults</button>
         <span class="admin-saved" id="admin-saved">✓ Configuración guardada. Recarga el tablero para aplicar.</span>
       </div>
 
@@ -541,12 +541,12 @@ tbody td{padding:8px 12px;white-space:nowrap;}
 </div>
 
 <script>
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 // CONFIGURACIÓN
-// ══════════════════════════════════════════════════════
-// ── CONFIGURACIÓN GLOBAL (editable desde panel de administración) ──
+// --------------------------------------------------------
+// CONFIGURACION GLOBAL
 const DEFAULT_CONFIG = {
-  CLIENT_ID: '83010513128-6lsh3o6kdltofq70o82p7rpqo0tqhmqr.apps.googleusercontent.com';
+  CLIENT_ID: '83010513128-6lsh3o6kdltofq70o82p7rpqo0tqhmqr.apps.googleusercontent.com',
   ROOT_FOLDER_ID: '1Ei6dEaZyDmoir5MgugwW3GC7V1P9TSgo',
   PP_FOLDER_ID: '1-UEH5E8NAoRQ7VuHWklHkRTCwcHLY8tT',
   ADMIN_EMAILS: [], // correos con acceso de administrador
@@ -613,9 +613,9 @@ function normalizarGestor(n){const c=n.trim().toLowerCase();if(GESTOR_MAP[c])ret
 
 let allData=[], filteredData=[], ppData={}; // ppData: {mes: {gestor: totalPP}}
 
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 // HELPERS FECHA
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 function parseDate(v){
   if(!v)return null;
   if(v instanceof Date)return isNaN(v)?null:v;
@@ -636,9 +636,9 @@ function getMesLabel(name){
 }
 function getMesNum(label){const meses={Enero:1,Febrero:2,Marzo:3,Abril:4,Mayo:5,Junio:6,Julio:7,Agosto:8,Septiembre:9,Octubre:10,Noviembre:11,Diciembre:12};for(const[m,n]of Object.entries(meses)){if(label.startsWith(m))return n;}return 0;}
 
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 // MAPEO DE COLUMNAS POR NOMBRE DE ENCABEZADO
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 function normalizeHeader(h){
   return String(h||'')
     .replace(/[^\x20-\x7E\xC0-\xFF]/g,'') // quitar caracteres invisibles/especiales
@@ -650,7 +650,7 @@ function normalizeHeader(h){
 // Debug: mostrar en consola los encabezados detectados
 function debugColMap(headerRow, colMap){
   console.log('=== ENCABEZADOS DETECTADOS ===');
-  headerRow.forEach((h,i)=>{ if(h) console.log(`Col ${i}: "${h}" → norm: "${normalizeHeader(h)}"`); });
+  headerRow.forEach((h,i)=>{ if(h) console.log(`Col ${i}: "${h}" - norm: "${normalizeHeader(h)}"`); });
   console.log('=== MAPA DE COLUMNAS ===', colMap);
 }
 
@@ -668,9 +668,9 @@ function buildColMap(headerRow){
   return map;
 }
 
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 // CLASIFICACIÓN DE ESTADO
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 // Lee directamente el valor de la columna GESTIÓN (AD)
 // Valores conocidos: Entregado, Entregado en Punto, Rechazado, Fallecido, y otros
 const today=new Date();
@@ -709,7 +709,7 @@ function classifyRecord(row, colMap){
   if(fEntrega&&(estado==='Pendiente sin gestión'||estado==='Pendiente'))
     return{estado:'Inconsistencia',alerta:'',dias:null,oportuno:null};
 
-  // Días calendario entre gestión y entrega (según documento: col AB→AC)
+  // Días calendario entre gestión y entrega (según documento: col AB-AC)
   if(fGestion&&fEntrega){
     dias=diasCalendario(fGestion,fEntrega);
     oportuno=dias!==null&&dias<=5;
@@ -735,9 +735,9 @@ function isCompleto(row,colMap){
   return campos.filter(c=>c!==undefined).every(c=>row[c]!==undefined&&row[c]!==null&&String(row[c]).trim()!=='');
 }
 
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 // GOOGLE AUTH
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 function loginGoogle(){
   const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
   s.onload=()=>{google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:(resp)=>{
@@ -746,9 +746,9 @@ function loginGoogle(){
   document.head.appendChild(s);
 }
 
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 // DRIVE API
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 async function driveList(query){
   const p=new URLSearchParams({q:query,fields:'files(id,name,mimeType)',pageSize:'200'});
   const r=await fetch(`https://www.googleapis.com/drive/v3/files?${p}`,{headers:{Authorization:`Bearer ${window._gToken}`}});
@@ -760,7 +760,7 @@ async function driveDownload(id){
   if(!r.ok)throw new Error(`Download ${r.status}`);
   return r.arrayBuffer();
 }
-// ── CARGA ARCHIVOS POBLACIÓN PRIORIZADA ──────────────────
+// -- CARGA ARCHIVOS POBLACIÓN PRIORIZADA ------------------
 async function loadPPFiles(){
   try{
     log('Buscando archivos de Población Priorizada...','info');
@@ -803,9 +803,9 @@ async function loadPPFiles(){
 function log(msg,type='info'){const el=document.getElementById('drive-log');el.style.display='block';const d=document.createElement('div');d.className=`log-item ${type}`;d.textContent=msg;el.appendChild(d);el.scrollTop=el.scrollHeight;}
 function setProgress(pct,msg){document.getElementById('loading-bar').style.width=pct+'%';if(msg)document.getElementById('loading-msg').textContent=msg;}
 
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 // CARGA DESDE DRIVE
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 async function loadFromDrive(){
   showLoading();document.getElementById('drive-log').innerHTML='';allData=[];
   try{
@@ -826,7 +826,7 @@ async function loadFromDrive(){
       }
       const gfNombre=normalizarGestor(gf.name);
       setProgress(5+(gi/gestorFolders.length*25),`Explorando: ${gfNombre}`);
-      log(`→ ${gfNombre}`,'info');
+      log(`- ${gfNombre}`,'info');
       const mesFolders=await driveList(`'${gf.id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
       if(!mesFolders.length){log(`  ⚠ Sin carpetas de mes`,'warn');continue;}
       for(const mes of mesFolders){
@@ -902,15 +902,15 @@ async function loadFromDrive(){
   document.getElementById('app').classList.add('active');
 }
 
-// ── CARGA POBLACIÓN PRIORIZADA ──────────────────────────
+// CARGA POBLACION PRIORIZADA
 async function loadPPData(){
   ppData={};
   console.log('=== INICIANDO loadPPData ===', PP_FOLDER_ID);
-  log('→ Cargando Población Priorizada...','info');
+  log('- Cargando Población Priorizada...','info');
   // Listar subcarpetas de mes dentro de PP
   const mesFolders=await driveList(`'${PP_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
   console.log('Carpetas PP encontradas:', mesFolders.map(f=>f.name));
-  log(`  → ${mesFolders.length} carpeta(s) de mes encontradas en PP`,'info');
+  log(`  - ${mesFolders.length} carpeta(s) de mes encontradas en PP`,'info');
   for(const mesFolder of mesFolders){
     const mesLabel=getMesLabel(mesFolder.name);
     console.log('Buscando archivos en:', mesFolder.name, mesFolder.id);
@@ -920,7 +920,7 @@ async function loadPPData(){
     if(!files.length){ log(`  ⚠ PP ${mesFolder.name}: sin archivos xlsx`,'warn'); continue; }
     // Tomar el primer archivo que contenga REGIONALES en el nombre, o el primero disponible
     const target=files.find(f=>f.name.toUpperCase().includes('REGIONALES'))||files[0];
-    log(`  → Usando archivo: ${target.name}`,'info');
+    log(`  - Usando archivo: ${target.name}`,'info');
     try{
       const buf=await driveDownload(target.id);
       const wb=XLSX.read(buf,{type:'array',cellDates:true});
@@ -931,8 +931,8 @@ async function loadPPData(){
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
       if(rows.length<2){ continue; }
       // Columnas exactas según estructura confirmada:
-      // C (índice 2) = num_id → identificador afiliado
-      // I (índice 8) = PBS → gestor farmacéutico
+      // C (índice 2) = num_id - identificador afiliado
+      // I (índice 8) = PBS - gestor farmacéutico
       const headers=rows[0].map(h=>normalizeHeader(h));
       console.log('Headers PP:', headers.slice(0,13));
       // Buscar PBS e ID por nombre de columna
@@ -941,7 +941,7 @@ async function loadPPData(){
       // Fallback por posición si no se encuentran por nombre
       if(pbsCol<0) pbsCol=headers.findIndex(h=>h.includes('pbs'));
       if(idCol<0) idCol=headers.findIndex(h=>h.includes('num_id')||h.includes('num id')||h.includes('numero')||h.includes('identificacion'));
-      console.log(`PP cols → pbsCol:${pbsCol}, idCol:${idCol}`);
+      console.log(`PP cols - pbsCol:${pbsCol}, idCol:${idCol}`);
       if(pbsCol<0||idCol<0){
         log(`  ⚠ PP ${mesFolder.name}: columnas no encontradas. Headers: ${rows[0].slice(0,13).join(', ')}`,'warn');
         continue;
@@ -976,7 +976,7 @@ async function loadPPData(){
 
 async function loadPobData(){
   pobData=[];
-  log('→ Cargando archivos Población Priorizada...','info');
+  log('- Cargando archivos Población Priorizada...','info');
   // Buscar archivos que contengan "Poblacion_Priorizada" en la carpeta raíz de PP
   const files=await driveList(`'${PP_FOLDER_ID}' in parents and trashed=false and (mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.ms-excel')`);
   // También buscar dentro de subcarpetas de mes
@@ -991,7 +991,7 @@ async function loadPobData(){
     const pobFiles=mFiles.filter(f=>f.name.toLowerCase().includes('poblacion')||f.name.toLowerCase().includes('población'));
     allFiles.push(...pobFiles.map(f=>({...f,mes:getMesLabel(mesFolder.name)})));
   }
-  log(`  → ${allFiles.length} archivo(s) Población encontrados`,'info');
+  log(`  - ${allFiles.length} archivo(s) Población encontrados`,'info');
   console.log('Archivos Población:', allFiles.map(f=>f.name));
 
   for(const file of allFiles){
@@ -1018,7 +1018,7 @@ async function loadPobData(){
       console.log('Headers raw:', rows[0].slice(0,15));
       console.log('ColIdx:', colIdx);
       console.log('Cols Población:', colIdx);
-      // Extraer mes del nombre del archivo (01.Poblacion_Priorizada_Enero → Enero)
+      // Extraer mes del nombre del archivo (01.Poblacion_Priorizada_Enero - Enero)
       const mesMatch=file.name.match(/Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre/i);
       const mesArchivo=mesMatch?getMesLabel(mesMatch[0]):file.mes;
 
@@ -1027,7 +1027,7 @@ async function loadPobData(){
         if(!row||row.every(c=>c===''||c===null||c===undefined))continue;
         const numId=String(row[colIdx.num_id]??'').trim();
         if(!numId)continue;
-        // Limpiar regional: "5 REG MEDELLIN" → "MEDELLÍN"
+        // Limpiar regional: "5 REG MEDELLIN" - "MEDELLÍN"
         const regionalRaw=String(row[colIdx.regional]??'').trim();
         const regional=limpiarRegional(regionalRaw);
         pobData.push({
@@ -1049,7 +1049,7 @@ async function loadPobData(){
 
 function limpiarRegional(raw){
   if(!raw)return'';
-  // Ejemplos: "5 REG MEDELLIN" → "MEDELLÍN", "1 REG BOGOTA" → "BOGOTÁ"
+  // Ejemplos: "5 REG MEDELLIN" - "MEDELLÍN", "1 REG BOGOTA" - "BOGOTÁ"
   const map={
     'BOGOTA':'BOGOTÁ','MEDELLIN':'MEDELLÍN','CALI':'CALI','BARRANQUILLA':'BARRANQUILLA',
     'BUCARAMANGA':'BUCARAMANGA','CENTRO ORIENTE':'CENTRO ORIENTE','SUROCCIDENTE':'SUROCCIDENTE',
@@ -1063,9 +1063,9 @@ function limpiarRegional(raw){
   return raw.replace(/^\d+\s*/,'').replace(/^REG\s*/i,'').trim();
 }
 
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 // FILTROS
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 function buildFilters(){
   const gfs=[...new Set(allData.map(r=>r.gf).filter(Boolean))].sort();
   const meses=[...new Set(allData.map(r=>r.mes).filter(Boolean))].sort((a,b)=>getMesNum(a)-getMesNum(b));
@@ -1113,9 +1113,9 @@ function getIndData(){
   });
 }
 
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 // RENDER SEGUIMIENTO
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 function renderAll(){renderKPIs();renderGFTable();renderCompletitud();renderAlertas();renderRechazosPreview();renderDetailTable();document.getElementById('record-count').textContent=`${filteredData.length.toLocaleString()} registros`;}
 
 function renderKPIs(){
@@ -1227,9 +1227,9 @@ function renderDetailTable(){
   if(data.length>300)tbody.innerHTML+=`<tr><td colspan="12" style="text-align:center;padding:8px;color:var(--muted);font-size:10px">Mostrando 300 de ${data.length} — usa filtros para reducir</td></tr>`;
 }
 
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 // RENDER INDICADORES
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 function semaforo(valor,rangos){
   // rangos: [{label,min,max,tipo}] tipo: 'green'|'yellow'|'red'
   // retorna clase de color
@@ -1265,7 +1265,7 @@ function renderIndicadores(){
   const tot=data.length;
   const gfs=[...new Set(data.map(r=>r.gf))].sort();
 
-  // ── 1. COBERTURA (filtros independientes, gauge + línea de tiempo) ──
+  // -- 1. COBERTURA (filtros independientes, gauge + línea de tiempo) --
   const hasPP=Object.keys(ppData).length>0;
   const mesesPP=Object.keys(ppData).sort((a,b)=>getMesNum(a)-getMesNum(b));
   const gfsPP=[...new Set(Object.values(ppData).flatMap(m=>Object.keys(m)))].sort();
@@ -1315,7 +1315,7 @@ function renderIndicadores(){
     <text x="${cx}" y="${cy+8}" text-anchor="middle" fill="${gaugeColor}" font-size="26" font-weight="700" font-family="IBM Plex Mono">${covPct!==null?covPct+'%':'—'}</text>
     <text x="${cx}" y="${cy+22}" text-anchor="middle" fill="var(--muted)" font-size="9" font-family="Sora">Cobertura PP</text>
     <text x="22" y="${cy+12}" fill="var(--muted)" font-size="8" text-anchor="middle">0%</text>
-    <text x="${cx}" y="16" fill="var(--accent)" font-size="8" text-anchor="middle">50%▲</text>
+    <text x="${cx}" y="16" fill="var(--accent)" font-size="8" text-anchor="middle">50%-</text>
     <text x="198" y="${cy+12}" fill="var(--muted)" font-size="8" text-anchor="middle">100%</text>
   </svg>`;
 
@@ -1394,7 +1394,7 @@ function renderIndicadores(){
     </div>
   </div>`;
 
-  // ── 2. EFECTIVIDAD ──
+  // -- 2. EFECTIVIDAD --
   const entregados=data.filter(r=>r.estado==='Entregado').length;
   const efect=tot?Math.round(entregados/tot*100):0;
   const efSem=efect>=(CFG.SEM_EFECTIVIDAD?.verde||65)?'green':efect>=(CFG.SEM_EFECTIVIDAD?.amarillo||50)?'yellow':'red';
@@ -1409,7 +1409,7 @@ function renderIndicadores(){
     </div>
   </div>`;
 
-  // ── 3. ENTREGADO EN PUNTO ──
+  // -- 3. ENTREGADO EN PUNTO --
   const enPunto=data.filter(r=>r.estado==='Entregado en Punto').length;
   const puntoPct=tot?Math.round(enPunto/tot*100):0;
   const pSem=puntoPct<=(CFG.SEM_EN_PUNTO?.verde||25)?'green':puntoPct<=(CFG.SEM_EN_PUNTO?.amarillo||35)?'yellow':'red';
@@ -1424,7 +1424,7 @@ function renderIndicadores(){
     </div>
   </div>`;
 
-  // ── 4. OPORTUNIDAD ──
+  // -- 4. OPORTUNIDAD --
   const soloEntregados=data.filter(r=>r.estado==='Entregado'&&r.dias!==null);
   const opPct=soloEntregados.length?Math.round(soloEntregados.filter(r=>r.dias<=5).length/soloEntregados.length*100):0;
   const promDias=soloEntregados.length?Math.round(soloEntregados.reduce((s,r)=>s+r.dias,0)/soloEntregados.length*10)/10:0;
@@ -1438,12 +1438,12 @@ function renderIndicadores(){
         <div><div class="ind-big-value" style="color:${semaforoColor(opSem)};font-size:32px">${opPct}%</div><div class="ind-sub">≤5 días calendario</div><div style="font-size:9px;color:var(--muted)">Sem: ≥85% verde · 70–84% amarillo · <70% rojo</div></div>
         <div><div class="ind-big-value" style="color:${semaforoColor(promSem)};font-size:32px">${promDias}d</div><div class="ind-sub">Promedio de entrega</div><div style="font-size:9px;color:var(--muted)">Sem: ≤5d verde · 6–7d amarillo · >7d rojo</div></div>
       </div>
-      <div style="font-size:10px;color:var(--muted);margin-bottom:8px">Fecha Gestión (AB) → Fecha Entrega (AC) · Solo registros "Entregado" · ${soloEntregados.length} registros</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px">Fecha Gestión (AB) - Fecha Entrega (AC) · Solo registros "Entregado" · ${soloEntregados.length} registros</div>
       ${tablaGF(opGF)}
     </div>
   </div>`;
 
-  // ── 5. NO EFECTIVO ──
+  // -- 5. NO EFECTIVO --
   const noEfect=data.filter(r=>r.estado!=='Entregado'&&r.estado!=='Entregado en Punto').length;
   const nePct=tot?Math.round(noEfect/tot*100):0;
   const neSem=nePct<=(CFG.SEM_NO_EFECTIVO?.verde||10)?'green':nePct<=(CFG.SEM_NO_EFECTIVO?.amarillo||15)?'yellow':'red';
@@ -1458,7 +1458,7 @@ function renderIndicadores(){
     </div>
   </div>`;
 
-  // ── 6. RECHAZOS ──
+  // -- 6. RECHAZOS --
   const rechazos=data.filter(r=>r.estado==='Rechazado').length;
   const rPct=tot?Math.round(rechazos/tot*100):0;
   const rSem=rPct<=(CFG.SEM_RECHAZOS?.verde||20)?'green':rPct<=(CFG.SEM_RECHAZOS?.amarillo||25)?'yellow':'red';
@@ -1473,7 +1473,7 @@ function renderIndicadores(){
     </div>
   </div>`;
 
-  // ── 7. FALLECIDOS ──
+  // -- 7. FALLECIDOS --
   const fallecidos=data.filter(r=>r.estado==='Fallecido').length;
   // Deduplicar por ID (un fallecido en 2 quincenas cuenta 1 vez)
   const fallIds=new Set(data.filter(r=>r.estado==='Fallecido').map(r=>String(r.id||'').trim()).filter(Boolean));
@@ -1492,7 +1492,7 @@ function renderIndicadores(){
   </div>`;
 
 
-  // ── 8. CALIDAD DE REPORTE - LÍNEAS EN BLANCO ──
+  // -- 8. CALIDAD DE REPORTE - LÍNEAS EN BLANCO --
   // Una fila es incompleta si F_ENTREGA (AC) o GESTION (AD) están en blanco
   const calGF=gfs.map(gf=>{
     const r=data.filter(x=>x.gf===gf);
@@ -1533,7 +1533,7 @@ function renderIndicadores(){
     </div>
   </div>`;
 
-  // ── INDICADOR: POBLACIÓN PRIORIZADA ──
+  // -- INDICADOR: POBLACIÓN PRIORIZADA --
   // Filtros propios independientes
   const pobTipoSel=msGet('pob-filter-tipo');
   const pobRegSel=msGet('pob-filter-regional');
@@ -1596,7 +1596,7 @@ function renderIndicadores(){
   }
 
   // Datos para gráfico de línea temporal: eje X = mes, eje Y = población única
-  // Si hay filtro de gestor → una línea por gestor; si no → una línea total
+  // Si hay filtro de gestor - una línea por gestor; si no - una línea total
   const mesesOrdenados=[...new Set(pobData.map(r=>r.mes))].sort((a,b)=>getMesNum(a)-getMesNum(b));
   const gfsEnFiltro=pobGFSel.length?pobGFSel:[...new Set(pobFiltrada.map(r=>r.pbs||'Sin gestor'))].sort();
   const COLORS=['#2dd4bf','#3b82f6','#22c55e','#f59e0b','#f97316','#ef4444','#a855f7','#ec4899'];
@@ -1739,9 +1739,9 @@ function renderIndicadores(){
   },50);
 }
 
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 // TABS
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 function switchTab(tab){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
@@ -1751,9 +1751,9 @@ function switchTab(tab){
   if(tab==='admin')loadAdminForm();
 }
 
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 // UTILS
-// ══════════════════════════════════════════════════════
+// --------------------------------------------------------
 function showRechazos(){
   const r=filteredData.filter(x=>x.estado==='Rechazado'),c=document.getElementById('modal-rechazos-content');
   c.innerHTML=r.length?r.map(x=>`<div class="rechazo-item"><div class="rechazo-id">ID: ${x.id||'—'} · ${x.mes}</div><div class="rechazo-motivo">${x.gestionRaw||'Sin motivo'}</div><div class="rechazo-gf">${x.gf} · ${x.mun||'—'} · ${fmtDate(x.fNotif)}</div></div>`).join(''):'<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">Sin rechazos</div></div>';
@@ -1794,7 +1794,7 @@ function exportCSV(){
   a.click();
 }
 
-// ── MULTISELECT COMPONENT ──────────────────────────────
+// MULTISELECT COMPONENT
 const msState={};
 
 function msInit(id, options, placeholder='Todos'){
@@ -1907,7 +1907,7 @@ document.addEventListener('click',()=>{
 function msGet(id){return msState[id]?[...msState[id]]:[];}
 function msClear(id){if(msState[id])msState[id].clear();}
 
-// ── PANEL ADMINISTRACIÓN ──────────────────────────────
+// PANEL ADMINISTRACION
 function toggleSection(id){
   const el=document.getElementById(id);
   if(el) el.style.display=el.style.display==='none'?'block':'none';
