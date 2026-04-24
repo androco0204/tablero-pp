@@ -418,23 +418,46 @@ tbody td{padding:8px 12px;white-space:nowrap;}
         </div>
       </div>
 
-      <!-- USUARIOS ADMIN -->
+      <!-- USUARIOS Y ROLES -->
       <div class="admin-section">
         <div class="admin-section-header" onclick="toggleSection('sec-users')">
-          <div class="admin-section-title">👤 Usuarios Administradores</div>
-          <span style="color:var(--muted);font-size:11px">▾</span>
+          <div class="admin-section-title">- Usuarios y Roles</div>
+          <span style="color:var(--muted);font-size:11px">-</span>
         </div>
         <div class="admin-section-body" id="sec-users">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Correos con acceso al panel de administración.</div>
-          <div id="admin-emails-tags" style="margin-bottom:8px"></div>
-          <div style="display:flex;gap:8px">
-            <input class="admin-input" id="new-admin-email" placeholder="correo@sanitas.com.co" style="max-width:280px" onkeydown="if(event.key==='Enter')addAdminEmail()">
-            <button class="btn btn-outline btn-sm" onclick="addAdminEmail()">+ Agregar</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+            <div style="background:rgba(45,212,191,.05);border:1px solid rgba(45,212,191,.2);border-radius:8px;padding:14px">
+              <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:4px">Administrador</div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:10px">Acceso total + panel de configuracion</div>
+              <div id="admin-emails-tags" style="margin-bottom:8px;min-height:24px"></div>
+              <div style="display:flex;gap:6px">
+                <input class="admin-input" id="new-admin-email" placeholder="correo@sanitas.com.co" onkeydown="if(event.key==='Enter')addRoleEmail('admin')">
+                <button class="btn btn-outline btn-sm" onclick="addRoleEmail('admin')">+</button>
+              </div>
+            </div>
+            <div style="background:rgba(59,130,246,.05);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:14px">
+              <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:4px">Analista</div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:10px">Ve todo + exportar CSV. Sin panel admin.</div>
+              <div id="analista-emails-tags" style="margin-bottom:8px;min-height:24px"></div>
+              <div style="display:flex;gap:6px">
+                <input class="admin-input" id="new-analista-email" placeholder="correo@sanitas.com.co" onkeydown="if(event.key==='Enter')addRoleEmail('analista')">
+                <button class="btn btn-outline btn-sm" onclick="addRoleEmail('analista')">+</button>
+              </div>
+            </div>
+            <div style="background:rgba(100,116,139,.05);border:1px solid rgba(100,116,139,.2);border-radius:8px;padding:14px">
+              <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px">Consulta</div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:10px">Solo visualizacion. Sin exportar ni configurar.</div>
+              <div id="consulta-emails-tags" style="margin-bottom:8px;min-height:24px"></div>
+              <div style="display:flex;gap:6px">
+                <input class="admin-input" id="new-consulta-email" placeholder="correo@sanitas.com.co" onkeydown="if(event.key==='Enter')addRoleEmail('consulta')">
+                <button class="btn btn-outline btn-sm" onclick="addRoleEmail('consulta')">+</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- ALERTAS OPERATIVAS -->
+            <!-- ALERTAS OPERATIVAS -->
       <div class="admin-section">
         <div class="admin-section-header" onclick="toggleSection('sec-alertas')">
           <div class="admin-section-title">⏱ Alertas Operativas</div>
@@ -549,7 +572,9 @@ const DEFAULT_CONFIG = {
   CLIENT_ID: '83010513128-6lsh3o6kdltofq70o82p7rpqo0tqhmqr.apps.googleusercontent.com',
   ROOT_FOLDER_ID: '1Ei6dEaZyDmoir5MgugwW3GC7V1P9TSgo',
   PP_FOLDER_ID: '1-UEH5E8NAoRQ7VuHWklHkRTCwcHLY8tT',
-  ADMIN_EMAILS: [], // correos con acceso de administrador
+  ADMIN_EMAILS: [],    // correos con rol Administrador
+  ANALISTA_EMAILS: [], // correos con rol Analista
+  CONSULTA_EMAILS: [], // correos con rol Consulta (solo ver)
   DIAS_SEGUIMIENTO: 3,
   DIAS_CRITICO: 15,
   DIAS_OPORTUNO: 5,
@@ -741,7 +766,22 @@ function isCompleto(row,colMap){
 function loginGoogle(){
   const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
   s.onload=()=>{google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:(resp)=>{
-    if(resp.access_token){window._gToken=resp.access_token;document.getElementById('login-screen').style.display='none';document.getElementById('user-info').textContent='● Drive conectado';loadFromDrive();}
+    if(resp.access_token){window._gToken=resp.access_token;
+            fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:`Bearer ${resp.access_token}`}})
+            .then(r=>r.json()).then(info=>{
+              window._userEmail=info.email||'';
+              window._userName=info.name||info.email||'';
+              detectUserRole(window._userEmail);
+              document.getElementById('login-screen').style.display='none';
+              document.getElementById('user-info').innerHTML=window._userName;
+              applyRoleRestrictions();
+              loadFromDrive();
+            }).catch(()=>{
+              document.getElementById('login-screen').style.display='none';
+              document.getElementById('user-info').textContent='- Drive conectado';
+              userRole='admin';
+              loadFromDrive();
+            });}
   }}).requestAccessToken();};
   document.head.appendChild(s);
 }
@@ -1941,7 +1981,7 @@ function loadAdminForm(){
   setValue('sem-cal-verde', c.SEM_CALIDAD.verde);
   setValue('sem-cal-amarillo', c.SEM_CALIDAD.amarillo);
   // Admin emails
-  renderAdminEmails();
+  renderRoleEmails();
   // Gestores
   renderGestoresList();
 }
@@ -1950,6 +1990,35 @@ function setValue(id,val){const el=document.getElementById(id);if(el)el.value=va
 function getVal(id){return document.getElementById(id)?.value?.trim()||'';}
 function getNum(id,def){const v=parseFloat(getVal(id));return isNaN(v)?def:v;}
 
+function renderRoleEmails(){
+  const roles={admin:'ADMIN_EMAILS',analista:'ANALISTA_EMAILS',consulta:'CONSULTA_EMAILS'};
+  const colors={admin:'var(--accent)',analista:'var(--blue)',consulta:'var(--muted)'};
+  for(const[role,key]of Object.entries(roles)){
+    const container=document.getElementById(`${role}-emails-tags`);
+    if(!container)continue;
+    container.innerHTML=(CFG[key]||[]).map(e=>`<span class="admin-tag" style="border-color:${colors[role]};color:${colors[role]}">${e}<span class="admin-tag-x" onclick="removeRoleEmail('${role}','${e}')">x</span></span>`).join('');
+  }
+}
+function addRoleEmail(role){
+  const keys={admin:'ADMIN_EMAILS',analista:'ANALISTA_EMAILS',consulta:'CONSULTA_EMAILS'};
+  const key=keys[role];
+  const input=document.getElementById(`new-${role}-email`);
+  const email=input?.value?.trim();
+  if(!email||!email.includes('@'))return;
+  if(!CFG[key])CFG[key]=[];
+  for(const[r,k]of Object.entries(keys)){if(r!==role&&(CFG[k]||[]).includes(email)){alert(`Este correo ya tiene rol de ${r}`);return;}}
+  if(!CFG[key].includes(email))CFG[key].push(email);
+  if(input)input.value='';
+  renderRoleEmails();
+}
+function removeRoleEmail(role,email){
+  const keys={admin:'ADMIN_EMAILS',analista:'ANALISTA_EMAILS',consulta:'CONSULTA_EMAILS'};
+  CFG[keys[role]]=(CFG[keys[role]]||[]).filter(e=>e!==email);
+  renderRoleEmails();
+}
+function renderAdminEmails(){renderRoleEmails();}
+function addAdminEmail(){addRoleEmail('admin');}
+function removeAdminEmail(e){removeRoleEmail('admin',e);}
 function renderAdminEmails(){
   const container=document.getElementById('admin-emails-tags');
   if(!container)return;
@@ -1965,12 +2034,12 @@ function addAdminEmail(){
   if(!CFG.ADMIN_EMAILS)CFG.ADMIN_EMAILS=[];
   if(!CFG.ADMIN_EMAILS.includes(email)){CFG.ADMIN_EMAILS.push(email);}
   if(input)input.value='';
-  renderAdminEmails();
+  renderRoleEmails();
 }
 
 function removeAdminEmail(email){
   CFG.ADMIN_EMAILS=(CFG.ADMIN_EMAILS||[]).filter(e=>e!==email);
-  renderAdminEmails();
+  renderRoleEmails();
 }
 
 function renderGestoresList(){
@@ -2013,6 +2082,8 @@ function removeGestor(alias){
 function saveAdminConfig(){
   const newCfg={
     ...CFG,
+    ANALISTA_EMAILS: CFG.ANALISTA_EMAILS||[],
+    CONSULTA_EMAILS: CFG.CONSULTA_EMAILS||[],
     CLIENT_ID: getVal('cfg-client-id'),
     ROOT_FOLDER_ID: getVal('cfg-root-folder'),
     PP_FOLDER_ID: getVal('cfg-pp-folder'),
@@ -2040,6 +2111,65 @@ function resetAdminConfig(){
   CFG=loadConfig();
   loadAdminForm();
 }
+
+// -- ROLES Y PERMISOS ------------------------------------------
+function detectUserRole(email){
+  const e=email.toLowerCase().trim();
+  const admins=(CFG.ADMIN_EMAILS||[]).map(x=>x.toLowerCase().trim());
+  const analistas=(CFG.ANALISTA_EMAILS||[]).map(x=>x.toLowerCase().trim());
+  const consultas=(CFG.CONSULTA_EMAILS||[]).map(x=>x.toLowerCase().trim());
+  if(admins.includes(e)) userRole='admin';
+  else if(analistas.includes(e)) userRole='analista';
+  else if(consultas.includes(e)) userRole='consulta';
+  else if(admins.length===0&&analistas.length===0&&consultas.length===0) userRole='admin'; // si no hay roles configurados, todos son admin
+  else userRole='sin-acceso';
+  console.log('Rol detectado:', userRole, 'para', email);
+}
+
+function applyRoleRestrictions(){
+  // Admin: acceso total
+  // Analista: sin panel admin, con exportar
+  // Consulta: sin panel admin, sin exportar, solo ver
+  const isAdmin=userRole==='admin';
+  const isAnalista=userRole==='analista';
+  const isConsulta=userRole==='consulta';
+
+  // Pestaña Admin - solo Admin
+  const adminTab=document.getElementById('tab-btn-admin');
+  if(adminTab) adminTab.style.display=isAdmin?'':'none';
+
+  // Boton CSV - Admin y Analista
+  const csvBtn=document.querySelector('[onclick="exportCSV()"]');
+  if(csvBtn) csvBtn.style.display=isConsulta?'none':'';
+
+  // Boton Actualizar Drive - Admin y Analista
+  const refreshBtn=document.querySelector('[onclick="refreshData()"]');
+  if(refreshBtn && isConsulta) refreshBtn.style.display='none';
+
+  // Sin acceso - bloquear todo
+  if(userRole==='sin-acceso'){
+    document.getElementById('app').innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:center;height:80vh;flex-direction:column;gap:16px">
+        <div style="font-size:48px">🔒</div>
+        <div style="font-size:20px;font-weight:700">Acceso no autorizado</div>
+        <div style="font-size:13px;color:var(--muted);text-align:center">
+          Tu correo <strong style="color:var(--text)">${window._userEmail}</strong><br>
+          no tiene permisos para acceder a este tablero.<br>
+          Contacta al administrador para solicitar acceso.
+        </div>
+      </div>`;
+    document.getElementById('app').classList.add('active');
+  }
+
+  // Mostrar badge de rol en header
+  const roleLabels={admin:'Admin',analista:'Analista',consulta:'Consulta','sin-acceso':'Sin acceso'};
+  const roleColors={admin:'var(--accent)',analista:'var(--blue)',consulta:'var(--muted)','sin-acceso':'var(--red)'};
+  const userInfoEl=document.getElementById('user-info');
+  if(userInfoEl && userRole){
+    userInfoEl.innerHTML=`<span style="color:${roleColors[userRole]||'var(--text2)'}">- ${window._userName||''}</span> <span style="background:${roleColors[userRole]};color:#0b0f1a;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700">${roleLabels[userRole]||''}</span>`;
+  }
+}
+
 function showLoading(){document.getElementById('loading-overlay').classList.add('active');document.getElementById('loading-bar').style.width='0%';}
 function hideLoading(){document.getElementById('loading-overlay').classList.remove('active');}
 async function refreshData(){if(window._gToken)await loadFromDrive();}
