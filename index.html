@@ -580,10 +580,10 @@ function saveConfig(cfg){
 }
 
 let CFG=loadConfig();
-const CLIENT_ID=CFG.CLIENT_ID;
-const ROOT_FOLDER_ID=CFG.ROOT_FOLDER_ID;
-const PP_FOLDER_ID=CFG.PP_FOLDER_ID;ales
-const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
+var CLIENT_ID=CFG.CLIENT_ID;
+var ROOT_FOLDER_ID=CFG.ROOT_FOLDER_ID;
+var PP_FOLDER_ID=CFG.PP_FOLDER_ID;
+var SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 
 // Mapa de nombres de columna a buscar en el encabezado del Excel
 // El tablero buscará estos nombres en la fila 1 (insensible a mayúsculas/acentos)
